@@ -75,6 +75,9 @@ document.addEventListener('DOMContentLoaded', () => {
   /* 목업 탭 네비게이션 초기화 */
   initMockupTabs();
 
+  /* 슬라이드 좌우 내비게이션 초기화 */
+  initSlideViewer();
+
   /* 홈 화면 저장된 팔레트 목록 초기 렌더 */
   renderHomePalettes();
 
@@ -143,9 +146,11 @@ function updateUI() {
   /* 칩 렌더링 */
   renderChips(displayPalette, myPicks);
 
-  /* 칩·도구 섹션 표시 */
+  /* 칩 섹션 표시 (tools-section은 setReadonlyView가 제어) */
   document.getElementById('chips-section').hidden = false;
-  document.getElementById('tools-section').hidden = false;
+
+  /* 뷰어 하단 컨트롤 표시 */
+  document.getElementById('mockup-viewer-footer').hidden = false;
 
   /* 역할 배지 업데이트 */
   renderRolesBadges(roles);
@@ -458,7 +463,7 @@ function handleCardLoaded(card, key) {
 function setReadonlyView(readonly) {
   document.getElementById('repick-row').hidden      = readonly;
   document.getElementById('palette-history').hidden = readonly;
-  document.getElementById('tools-controls').hidden  = readonly;
+  document.getElementById('tools-section').hidden   = readonly; /* 역할 섞기 */
 }
 
 /** 워크스페이스 화면으로 전환 (홈 화면 숨김) */
@@ -489,6 +494,38 @@ function initMockupTabs() {
       });
     });
   });
+}
+
+/**
+ * 슬라이드 탭 내 좌우 내비게이션 초기화
+ * 한 번에 한 장씩 표시, 도트 + 화살표로 페이지 전환
+ */
+function initSlideViewer() {
+  const SLIDE_IDS = ['mockup-slide-cover', 'mockup-slide-body', 'mockup-slide-chart'];
+  let current = 0;
+
+  const prevBtn = document.getElementById('slide-prev');
+  const nextBtn = document.getElementById('slide-next');
+  const dots    = document.querySelectorAll('.slide-dot');
+
+  function update() {
+    /* 현재 슬라이드만 보이기 */
+    SLIDE_IDS.forEach((id, i) => {
+      document.getElementById(id).hidden = i !== current;
+    });
+
+    /* 도트 활성화 */
+    dots.forEach((dot, i) => dot.classList.toggle('active', i === current));
+
+    /* 첫 장이면 이전 화살표 숨김, 마지막 장이면 다음 화살표 숨김 */
+    prevBtn.hidden = current === 0;
+    nextBtn.hidden = current === SLIDE_IDS.length - 1;
+  }
+
+  prevBtn.addEventListener('click', () => { if (current > 0) { current--; update(); } });
+  nextBtn.addEventListener('click', () => { if (current < SLIDE_IDS.length - 1) { current++; update(); } });
+
+  update();
 }
 
 /** 스포이드로 색 선택됐을 때 */
@@ -558,11 +595,12 @@ function handleHomeClick() {
   showHomeScreen();
 
   /* 워크스페이스 내부 상태 초기화 */
-  document.getElementById('upload-placeholder').hidden = false;
-  document.getElementById('image-display').hidden      = true;
-  document.getElementById('chips-section').hidden      = true;
-  document.getElementById('tools-section').hidden      = true;
-  document.getElementById('prompt-section').hidden     = true;
+  document.getElementById('upload-placeholder').hidden     = false;
+  document.getElementById('image-display').hidden          = true;
+  document.getElementById('chips-section').hidden          = true;
+  document.getElementById('tools-section').hidden          = true;
+  document.getElementById('prompt-section').hidden         = true;
+  document.getElementById('mockup-viewer-footer').hidden   = true;
 
   /* 슬라이더·모드 버튼 리셋 */
   document.getElementById('contrast-slider').value = 0;

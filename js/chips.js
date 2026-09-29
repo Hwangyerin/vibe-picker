@@ -9,6 +9,9 @@ import { state, setState } from './state.js';
 /* 스포이드 모드가 켜졌을 때 선택 대기 중인 칩 인덱스 */
 let eyedropperTargetIdx = null;
 
+/* 커서 색 링 DOM 요소 (initEyedropperOverlay에서 생성) */
+let eyedropperRing = null;
+
 /* 스포이드로 픽셀을 집었을 때 호출할 콜백 (main.js에서 등록) */
 let onEyedropperPick = null;
 
@@ -212,37 +215,86 @@ export function deactivateEyedropper() {
 
   const overlay = document.getElementById('eyedropper-overlay');
   if (overlay) overlay.hidden = true;
+
+  /* 색 링 숨김 */
+  if (eyedropperRing) eyedropperRing.hidden = true;
 }
 
 /**
- * 스포이드 오버레이 클릭 이벤트 초기화
- * - 사진 캔버스 클릭 위치의 픽셀 색을 읽음
+ * 뷰포트 좌표 → 캔버스 픽셀 색 읽기
+ * 3×3 픽셀 평균을 내어 CSS 축소 렌더링과 실제 픽셀 간 오차를 줄임
+ * @param {HTMLCanvasElement} canvas
+ * @param {number} clientX
+ * @param {number} clientY
+ * @returns {string|null} HEX 색 (#RRGGBB) 또는 null (캔버스 밖)
+ */
+function sampleColor(canvas, clientX, clientY) {
+  const rect   = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const cx = Math.round((clientX - rect.left) * scaleX);
+  const cy = Math.round((clientY - rect.top)  * scaleY);
+
+  if (cx < 0 || cy < 0 || cx >= canvas.width || cy >= canvas.height) return null;
+
+  /* 3×3 영역 샘플링 (경계 처리) */
+  const ctx    = canvas.getContext('2d');
+  const sx     = Math.max(0, cx - 1);
+  const sy     = Math.max(0, cy - 1);
+  const sw     = Math.min(3, canvas.width  - sx);
+  const sh     = Math.min(3, canvas.height - sy);
+  const { data } = ctx.getImageData(sx, sy, sw, sh);
+
+  let R = 0, G = 0, B = 0;
+  const n = sw * sh;
+  for (let i = 0; i < n; i++) {
+    R += data[i * 4];
+    G += data[i * 4 + 1];
+    B += data[i * 4 + 2];
+  }
+  return '#' + [Math.round(R / n), Math.round(G / n), Math.round(B / n)]
+    .map((v) => v.toString(16).padStart(2, '0').toUpperCase())
+    .join('');
+}
+
+/**
+ * 스포이드 오버레이 초기화
+ * - 마우스 이동 시 색 링 커서 표시
+ * - 클릭 시 색 읽어 콜백 전달
  */
 export function initEyedropperOverlay() {
   const overlay = document.getElementById('eyedropper-overlay');
   const canvas  = document.getElementById('image-canvas');
 
+  /* 색 링 커서 DOM 생성 (body에 붙여 position:fixed로 자유롭게 이동) */
+  eyedropperRing = document.createElement('div');
+  eyedropperRing.className = 'eyedropper-ring';
+  eyedropperRing.hidden = true;
+  document.body.appendChild(eyedropperRing);
+
+  /* 마우스 이동 → 링 위치·색 업데이트 */
+  overlay.addEventListener('mousemove', (e) => {
+    if (eyedropperTargetIdx === null) return;
+    eyedropperRing.hidden = false;
+    eyedropperRing.style.left = `${e.clientX}px`;
+    eyedropperRing.style.top  = `${e.clientY}px`;
+
+    const hex = sampleColor(canvas, e.clientX, e.clientY);
+    if (hex) eyedropperRing.style.borderColor = hex;
+  });
+
+  /* 커서가 오버레이를 벗어나면 링 숨김 */
+  overlay.addEventListener('mouseleave', () => {
+    eyedropperRing.hidden = true;
+  });
+
+  /* 클릭 → 색 읽어 콜백 */
   overlay.addEventListener('click', (e) => {
     if (eyedropperTargetIdx === null) return;
 
-    /* 오버레이 내 클릭 좌표를 캔버스 실제 픽셀 좌표로 변환 */
-    const rect   = canvas.getBoundingClientRect();
-    const scaleX = canvas.width  / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const x = Math.round((e.clientX - rect.left)  * scaleX);
-    const y = Math.round((e.clientY - rect.top)   * scaleY);
+    const hex = sampleColor(canvas, e.clientX, e.clientY);
+    if (!hex) return;
 
-    /* 캔버스 범위를 벗어난 클릭은 무시 (canvas-wrapper로 막히지만 이중 방어) */
-    if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
-
-    /* 해당 픽셀의 RGBA 읽기 */
-    const ctx  = canvas.getContext('2d');
-    const [r, g, b] = ctx.getImageData(x, y, 1, 1).data;
-    const hex  = '#' + [r, g, b]
-      .map((v) => v.toString(16).padStart(2, '0').toUpperCase())
-      .join('');
-
-    /* 콜백으로 전달 (main.js에서 팔레트·상태 업데이트) */
     onEyedropperPick?.(hex, eyedropperTargetIdx);
     deactivateEyedropper();
   });

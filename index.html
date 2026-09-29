@@ -104,39 +104,12 @@
           <div class="palette-history" id="palette-history"></div>
         </section>
 
-        <!-- 역할 배지 + 조작 버튼들 -->
+        <!-- 역할 섞기 버튼 -->
         <section class="tools-section" id="tools-section" hidden>
-          <!-- 역할별 색 배지 (roles.js가 채움) -->
-          <div class="roles-display" id="roles-display"></div>
-
-          <div class="tools-controls" id="tools-controls">
-            <!-- 역할 섞기: 5색의 역할(배경·글자·메인·포인트·보조)을 무작위로 재배정 -->
-            <div class="shuffle-wrap">
-              <button class="btn btn-shuffle" id="btn-shuffle"
-                title="5색의 역할(배경·글자·메인·포인트·보조)을 무작위로 바꿉니다">역할 섞기</button>
-              <span class="shuffle-desc">배경·글자·메인 등 역할을 무작위 재배정</span>
-            </div>
-
-            <!-- 대비 슬라이더 + 초기화 버튼 -->
-            <div class="slider-wrap">
-              <label class="slider-label" for="contrast-slider">
-                대비
-                <input type="range" id="contrast-slider" min="-50" max="50" value="0" />
-              </label>
-              <button class="btn btn-contrast-reset" id="btn-contrast-reset" title="대비 초기화">↺</button>
-            </div>
-
-            <!-- 가독성 경고: 글자-배경 대비 부족할 때만 표시 -->
-            <div class="readability-warning" id="readability-warning" hidden>
-              <span class="warning-icon">⚠</span>
-              <span class="warning-text" id="warning-text">가독성 주의</span>
-            </div>
-
-            <!-- 라이트·다크 전환 버튼 -->
-            <div class="mode-toggle" role="group" aria-label="라이트/다크 모드">
-              <button class="btn btn-mode active" data-mode="light" id="btn-light">라이트</button>
-              <button class="btn btn-mode" data-mode="dark" id="btn-dark">다크</button>
-            </div>
+          <div class="shuffle-wrap">
+            <button class="btn btn-shuffle" id="btn-shuffle"
+              title="5색의 역할(배경·글자·메인·포인트·보조)을 무작위로 바꿉니다">역할 섞기</button>
+            <span class="shuffle-desc">배경·글자·메인 등 역할을 무작위 재배정</span>
           </div>
         </section>
 
@@ -155,9 +128,21 @@
 
           <!-- 슬라이드 탭 -->
           <div class="mockup-tab-pane" id="mockup-pane-slide">
-            <div class="mockup-slide-row">
+            <!-- 슬라이드 캐러셀: 화살표가 슬라이드 좌우 중앙에 오버레이 -->
+            <div class="slide-carousel">
+              <button class="slide-nav-btn slide-prev" id="slide-prev" aria-label="이전 슬라이드" hidden></button>
+              <button class="slide-nav-btn slide-next" id="slide-next" aria-label="다음 슬라이드"></button>
+
               <div class="mockup-card mockup-slide-cover" id="mockup-slide-cover"></div>
-              <div class="mockup-card mockup-slide-body" id="mockup-slide-body"></div>
+              <div class="mockup-card mockup-slide-body" id="mockup-slide-body" hidden></div>
+              <div class="mockup-card mockup-slide-chart" id="mockup-slide-chart" hidden></div>
+            </div>
+
+            <!-- 도트 인디케이터 -->
+            <div class="slide-dots">
+              <span class="slide-dot active"></span>
+              <span class="slide-dot"></span>
+              <span class="slide-dot"></span>
             </div>
           </div>
 
@@ -169,6 +154,35 @@
           <!-- 앱 탭 -->
           <div class="mockup-tab-pane" id="mockup-pane-app" hidden>
             <div class="mockup-card mockup-app" id="mockup-app"></div>
+          </div>
+
+          <!-- 뷰어 하단 고정 컨트롤: 역할 배지 + 대비 + 라이트/다크 -->
+          <div class="mockup-viewer-footer" id="mockup-viewer-footer" hidden>
+            <!-- 역할별 색 배지 -->
+            <div class="roles-display" id="roles-display"></div>
+
+            <div class="viewer-controls">
+              <!-- 대비 슬라이더 + 초기화 -->
+              <div class="slider-wrap">
+                <label class="slider-label" for="contrast-slider">
+                  대비
+                  <input type="range" id="contrast-slider" min="-50" max="50" value="0" />
+                </label>
+                <button class="btn btn-contrast-reset" id="btn-contrast-reset" title="대비 초기화">↺</button>
+              </div>
+
+              <!-- 가독성 경고 -->
+              <div class="readability-warning" id="readability-warning" hidden>
+                <span class="warning-icon">⚠</span>
+                <span class="warning-text" id="warning-text">가독성 주의</span>
+              </div>
+
+              <!-- 라이트·다크 전환 -->
+              <div class="mode-toggle" role="group" aria-label="라이트/다크 모드">
+                <button class="btn btn-mode active" data-mode="light" id="btn-light">라이트</button>
+                <button class="btn btn-mode" data-mode="dark" id="btn-dark">다크</button>
+              </div>
+            </div>
           </div>
         </div>
 

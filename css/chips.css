@@ -152,6 +152,48 @@
   background-color: var(--color-surface);
 }
 
+/* ---------- 스포이드 색 링 커서 ---------- */
+/*
+ * body에 붙은 position:fixed 요소
+ * 가운데가 뚫린 도넛 형태 — border가 현재 픽하려는 색을 표시
+ * JS가 border-color와 left/top을 실시간으로 업데이트
+ */
+.eyedropper-ring {
+  position: fixed;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 5px solid transparent;   /* JS가 borderColor = hex 로 설정 */
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.95),
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.95),
+    0 2px 12px rgba(0, 0, 0, 0.45);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* 중심 십자선: 정확한 픽 위치를 표시 */
+.eyedropper-ring::before,
+.eyedropper-ring::after {
+  content: '';
+  position: absolute;
+  background: rgba(255, 255, 255, 0.9);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+/* 가로선 */
+.eyedropper-ring::before {
+  width: 8px;
+  height: 1.5px;
+}
+/* 세로선 */
+.eyedropper-ring::after {
+  width: 1.5px;
+  height: 8px;
+}
+
 /* ---------- 복사됨 뱃지 ---------- */
 .chip-copied {
   font-size: 0.5625rem;

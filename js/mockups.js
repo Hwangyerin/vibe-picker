@@ -16,6 +16,7 @@ export function renderMockups(roles, mode = 'light') {
   if (!document.getElementById('mockup-slide-cover').dataset.built) {
     buildSlideCover();
     buildSlideBody();
+    buildSlideChart();
     buildWeb();
     buildApp();
     /* 한 번 빌드됐다는 표시 */
@@ -80,6 +81,50 @@ function buildSlideBody() {
       <div class="slide-body-line"></div>
       <div class="slide-body-line"></div>
       <span class="slide-body-highlight">사진 → 색 → 화면</span>
+    </div>
+  `;
+}
+
+/** 슬라이드 차트 목업 (막대 그래프 + 통계) */
+function buildSlideChart() {
+  document.getElementById('mockup-slide-chart').innerHTML = `
+    <div class="slide-chart-header">
+      <div class="slide-chart-dot"></div>
+      <span class="slide-chart-title">성과 분석</span>
+    </div>
+    <div class="slide-chart-body">
+      <div class="slide-bar-chart">
+        <div class="slide-bar">
+          <div class="slide-bar-fill" style="height:52%"></div>
+          <span class="slide-bar-label">1Q</span>
+        </div>
+        <div class="slide-bar">
+          <div class="slide-bar-fill" style="height:68%"></div>
+          <span class="slide-bar-label">2Q</span>
+        </div>
+        <div class="slide-bar">
+          <div class="slide-bar-fill" style="height:45%"></div>
+          <span class="slide-bar-label">3Q</span>
+        </div>
+        <div class="slide-bar highlight">
+          <div class="slide-bar-fill" style="height:88%"></div>
+          <span class="slide-bar-label">4Q</span>
+        </div>
+        <div class="slide-bar">
+          <div class="slide-bar-fill" style="height:74%"></div>
+          <span class="slide-bar-label">목표</span>
+        </div>
+      </div>
+      <div class="slide-stats">
+        <div class="slide-stat">
+          <span class="slide-stat-val">+38%</span>
+          <span class="slide-stat-label">성장률</span>
+        </div>
+        <div class="slide-stat">
+          <span class="slide-stat-val">1,240</span>
+          <span class="slide-stat-label">사용자</span>
+        </div>
+      </div>
     </div>
   `;
 }

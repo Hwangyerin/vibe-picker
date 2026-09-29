@@ -27,7 +27,6 @@
 /* ========== 슬라이드 표지 ========== */
 .mockup-slide-cover {
   width: 100%;
-  max-width: 340px;
   aspect-ratio: 16 / 9;
   background-color: var(--mk-bg);
   color: var(--mk-text);
@@ -92,7 +91,6 @@
 /* ========== 슬라이드 본문 ========== */
 .mockup-slide-body {
   width: 100%;
-  max-width: 340px;
   aspect-ratio: 16 / 9;
   background-color: var(--mk-bg);
   color: var(--mk-text);
@@ -160,6 +158,126 @@
   color: var(--mk-text-dark);
 }
 .mockup-slide-body.dark .slide-body-title {
+  color: var(--mk-text-dark);
+}
+
+/* ========== 슬라이드 차트 (3번째 슬라이드) ========== */
+.mockup-slide-chart {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: var(--mk-bg);
+  color: var(--mk-text);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  padding: 20px 28px 18px;
+  gap: 12px;
+  transition: background-color var(--transition-slow), color var(--transition-slow);
+}
+
+.slide-chart-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--mk-main);
+  padding-bottom: 8px;
+  transition: border-color var(--transition-slow);
+}
+
+.slide-chart-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--mk-point);
+  flex-shrink: 0;
+  transition: background-color var(--transition-slow);
+}
+
+.slide-chart-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mk-text);
+  transition: color var(--transition-slow);
+}
+
+.slide-chart-body {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: end;
+  min-height: 0;
+}
+
+/* 막대 차트 */
+.slide-bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 100%;
+}
+
+.slide-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  height: 100%;
+}
+
+.slide-bar-fill {
+  width: 100%;
+  background-color: var(--mk-main);
+  border-radius: 3px 3px 0 0;
+  transition: background-color var(--transition-slow);
+  min-height: 6px;
+}
+/* 포인트 컬러 강조 막대 */
+.slide-bar.highlight .slide-bar-fill {
+  background-color: var(--mk-point);
+}
+
+.slide-bar-label {
+  font-size: 9px;
+  color: var(--mk-sub);
+  transition: color var(--transition-slow);
+}
+
+/* 우측 통계 수치 */
+.slide-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.slide-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.slide-stat-val {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--mk-point);
+  transition: color var(--transition-slow);
+}
+
+.slide-stat-label {
+  font-size: 9px;
+  color: var(--mk-sub);
+  margin-top: 2px;
+  transition: color var(--transition-slow);
+}
+
+.mockup-slide-chart.dark {
+  background-color: var(--mk-bg-dark);
+  color: var(--mk-text-dark);
+}
+.mockup-slide-chart.dark .slide-chart-title {
   color: var(--mk-text-dark);
 }
 

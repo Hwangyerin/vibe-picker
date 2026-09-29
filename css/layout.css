@@ -203,27 +203,33 @@
   width: 100%;
 }
 
-/* canvas-wrapper: 캔버스 크기만큼만 감싸서 overlay가 정확히 캔버스 위를 덮게 함 */
+/* canvas-wrapper: 가로·세로 사진 모두 동일한 260px 고정 박스에 표시 */
 .canvas-wrapper {
   position: relative;
-  display: block;
   width: 100%;
+  height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
 #image-canvas {
-  width: 100%;
+  max-width: 100%;
+  max-height: 260px;
+  width: auto;
   height: auto;
-  max-height: 420px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   display: block;
-  object-fit: contain;
 }
 
 /* 스포이드 모드 오버레이 */
 .eyedropper-overlay {
   position: absolute;
   inset: 0;
-  cursor: crosshair;
+  cursor: none;   /* 기본 커서 숨김 — 색 링 커서(eyedropper-ring)가 대신 표시됨 */
   border-radius: var(--radius-md);
 }
 
@@ -327,23 +333,16 @@
   background: rgba(180, 30, 30, 0.9);
 }
 
-/* ---------- 도구 섹션 ---------- */
+/* ---------- 도구 섹션 (역할 섞기 버튼만) ---------- */
 .tools-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
 }
 
+/* 역할 배지 (뷰어 푸터에서 사용) */
 .roles-display {
   display: flex;
   gap: var(--space-sm);
-  flex-wrap: wrap;
-}
-
-.tools-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
   flex-wrap: wrap;
 }
 
@@ -426,12 +425,15 @@
   min-width: 0;
 }
 
-/* 목업 뷰어 박스 */
+/* 목업 뷰어 박스: 고정 높이 */
 .mockup-viewer {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
   background-color: var(--color-white);
+  display: flex;
+  flex-direction: column;
+  height: 540px;
 }
 
 /* ---------- 탭 네비게이션 ---------- */
@@ -439,6 +441,7 @@
   display: flex;
   border-bottom: 1px solid var(--color-border);
   background-color: var(--color-surface);
+  flex-shrink: 0;
 }
 
 .mockup-tab-btn {
@@ -468,6 +471,9 @@
 
 /* ---------- 탭 패널 ---------- */
 .mockup-tab-pane {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
   padding: var(--space-lg);
   display: flex;
   flex-direction: column;
@@ -475,19 +481,96 @@
   align-items: center;
 }
 
-/* 슬라이드 표지 + 본문 나란히 */
-.mockup-slide-row {
-  display: flex;
-  gap: var(--space-md);
-  flex-wrap: wrap;
-  justify-content: center;
+/* ---------- 슬라이드 캐러셀 ---------- */
+.slide-carousel {
+  position: relative;   /* 화살표 버튼의 기준점 */
   width: 100%;
+}
+
+/* 원형 반투명 화살표: 슬라이드 위 좌우 중앙에 오버레이 */
+.slide-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.22);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  transition: background var(--transition-fast);
+  flex-shrink: 0;
+}
+.slide-nav-btn:hover {
+  background: rgba(0, 0, 0, 0.42);
+}
+.slide-prev { left: 10px; }
+.slide-next { right: 10px; }
+
+/* 꺾쇠 화살표 — CSS border 방식 */
+.slide-nav-btn::before {
+  content: '';
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-top: 2px solid rgba(255, 255, 255, 0.92);
+  border-right: 2px solid rgba(255, 255, 255, 0.92);
+}
+.slide-prev::before {
+  transform: rotate(-135deg) translate(-1px, 1px);
+}
+.slide-next::before {
+  transform: rotate(45deg) translate(-1px, 1px);
+}
+
+/* ---------- 슬라이드 도트 인디케이터 ---------- */
+.slide-dots {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  margin-top: var(--space-sm);
+}
+
+.slide-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.18);
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.slide-dot.active {
+  background: rgba(0, 0, 0, 0.5);
+  transform: scale(1.3);
 }
 
 /* 목업 카드 공통 */
 .mockup-card {
   border-radius: var(--radius-md);
   overflow: hidden;
+}
+
+/* ---------- 뷰어 하단 컨트롤 ---------- */
+.mockup-viewer-footer {
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-md) var(--space-lg);
+  background-color: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.viewer-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
 }
 
 /* ---------- AI 프롬프트 섹션 ---------- */
