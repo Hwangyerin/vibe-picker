@@ -224,9 +224,9 @@ export function renderHomePalettes() {
     return;
   }
 
-  /* 업로드 화면(placeholder가 보일 때)에서만 표시 */
-  const onHomScreen = !document.getElementById('upload-placeholder').hidden;
-  if (!onHomScreen) return;
+  /* 홈 화면일 때만 표시 */
+  const onHomeScreen = !document.getElementById('home-screen').hidden;
+  if (!onHomeScreen) return;
 
   section.hidden = false;
   grid.innerHTML = '';

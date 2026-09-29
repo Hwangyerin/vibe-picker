@@ -26,7 +26,7 @@
     <!-- 타이틀 클릭 → 초기 화면으로 리셋 (홈 버튼 역할) -->
     <h1 class="app-title" id="app-title" role="button" tabindex="0" title="처음으로">VibePicker</h1>
     <div class="header-actions">
-      <!-- 저장 버튼: 변경이 있을 때만 활성화됨 (2단계 이후 로직 연결) -->
+      <!-- 저장 버튼: 변경이 있을 때만 활성화됨 -->
       <button class="btn btn-save" id="btn-save" disabled>저장</button>
       <!-- 서랍 버튼: 저장된 팔레트 카드 목록 열기 -->
       <button class="btn btn-drawer" id="btn-drawer">서랍</button>
@@ -36,146 +36,155 @@
   <!-- ===== 메인 콘텐츠 ===== -->
   <main class="app-main">
 
-    <!-- 1. 사진 올리기 + 사진 표시 영역 -->
-    <section class="upload-section" id="upload-section">
-      <!-- 사진이 없을 때 보이는 업로드 안내 -->
-      <div class="upload-placeholder" id="upload-placeholder">
-        <p class="upload-hint">사진을 끌어다 놓거나 파일을 선택하세요</p>
-        <button class="btn btn-file" id="btn-file">파일 선택</button>
-        <input type="file" id="file-input" accept="image/*" hidden />
+    <!-- ── 홈 화면: 사진 업로드 + 저장된 팔레트 목록 ── -->
+    <div id="home-screen">
+      <!-- 사진 업로드 안내 -->
+      <section class="upload-section" id="upload-section">
+        <div class="upload-placeholder" id="upload-placeholder">
+          <p class="upload-hint">사진을 끌어다 놓거나 파일을 선택하세요</p>
+          <button class="btn btn-file" id="btn-file">파일 선택</button>
+          <input type="file" id="file-input" accept="image/*" hidden />
 
-        <!-- 샘플 사진 3장: 누르면 바로 체험 가능 -->
-        <div class="sample-list" id="sample-list">
-          <p class="sample-label">샘플로 바로 체험해보기</p>
-          <div class="sample-thumbs">
-            <button class="sample-thumb" data-index="0" aria-label="샘플 사진 1">
-              <img src="samples/sample1.jpg" alt="샘플 1" />
-            </button>
-            <button class="sample-thumb" data-index="1" aria-label="샘플 사진 2">
-              <img src="samples/sample2.jpg" alt="샘플 2" />
-            </button>
-            <button class="sample-thumb" data-index="2" aria-label="샘플 사진 3">
-              <img src="samples/sample3.jpg" alt="샘플 3" />
-            </button>
+          <!-- 샘플 사진 3장: 누르면 바로 체험 가능 -->
+          <div class="sample-list" id="sample-list">
+            <p class="sample-label">샘플로 바로 체험해보기</p>
+            <div class="sample-thumbs">
+              <button class="sample-thumb" data-index="0" aria-label="샘플 사진 1">
+                <img src="samples/sample1.jpg" alt="샘플 1" />
+              </button>
+              <button class="sample-thumb" data-index="1" aria-label="샘플 사진 2">
+                <img src="samples/sample2.jpg" alt="샘플 2" />
+              </button>
+              <button class="sample-thumb" data-index="2" aria-label="샘플 사진 3">
+                <img src="samples/sample3.jpg" alt="샘플 3" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- 사진이 올라온 뒤 보이는 영역 (처음엔 숨김) -->
-      <div class="image-display" id="image-display" hidden>
-        <!-- canvas-wrapper: overlay가 캔버스 영역만 정확히 덮도록 감쌈 -->
-        <div class="canvas-wrapper">
-          <canvas id="image-canvas" aria-label="업로드된 사진"></canvas>
-          <!-- 스포이드 모드일 때 사진 위에 덮이는 투명 레이어 -->
-          <div class="eyedropper-overlay" id="eyedropper-overlay" hidden></div>
+      <!-- 저장된 팔레트 목록 (서랍에 카드가 있을 때만 표시) -->
+      <section class="home-palettes-section" id="home-palettes-section" hidden>
+        <h2 class="home-palettes-title">저장된 팔레트</h2>
+        <div class="home-palettes-grid" id="home-palettes-grid">
+          <!-- storage.js가 동적으로 채움 -->
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
 
-    <!-- 1-b. 홈 화면 저장된 팔레트 목록 (서랍에 카드가 있을 때만 표시) -->
-    <section class="home-palettes-section" id="home-palettes-section" hidden>
-      <h2 class="home-palettes-title">저장된 팔레트</h2>
-      <div class="home-palettes-grid" id="home-palettes-grid">
-        <!-- storage.js가 동적으로 채움 -->
-      </div>
-    </section>
+    <!-- ── 워크스페이스: 좌(사진+칩+도구) / 우(목업 탭 뷰어) ── -->
+    <div id="workspace" class="workspace" hidden>
 
-    <!-- 2. 컬러칩 5개 + 다시 뽑기 버튼 -->
-    <section class="chips-section" id="chips-section" hidden>
-      <div class="chips-row" id="chips-row">
-        <!-- 컬러칩은 chips.js가 동적으로 채움 -->
-      </div>
-      <div class="repick-row" id="repick-row">
-        <button class="btn btn-repick" id="btn-repick">다시 뽑기</button>
-        <!-- 보관 버튼: 현재 팔레트를 히스토리에 추가 (최대 5개) -->
-        <button class="btn btn-keep" id="btn-keep" title="이 팔레트를 아래에 보관">보관</button>
-        <span class="keep-warning" id="keep-warning" hidden>최대 5개까지 보관할 수 있어요</span>
-      </div>
+      <!-- 좌측 컬럼 -->
+      <div class="workspace-left">
 
-      <!-- 팔레트 히스토리: 보관 버튼을 눌렀을 때 쌓이는 시안 목록 -->
-      <div class="palette-history" id="palette-history"></div>
-    </section>
-
-    <!-- 3. 색 역할 배정 정보 + 조작 버튼들 -->
-    <section class="tools-section" id="tools-section" hidden>
-      <!-- 역할별 색 배지 (roles.js가 채움) -->
-      <div class="roles-display" id="roles-display"></div>
-
-      <div class="tools-controls" id="tools-controls">
-        <!-- 역할 섞기: 5색의 역할(배경·글자·메인·포인트·보조)을 무작위로 재배정 -->
-        <div class="shuffle-wrap">
-          <button class="btn btn-shuffle" id="btn-shuffle"
-            title="5색의 역할(배경·글자·메인·포인트·보조)을 무작위로 바꿉니다">역할 섞기</button>
-          <span class="shuffle-desc">배경·글자·메인 등 역할을 무작위 재배정</span>
-        </div>
-
-        <!-- 대비 슬라이더 + 초기화 버튼 -->
-        <div class="slider-wrap">
-          <label class="slider-label" for="contrast-slider">
-            대비
-            <input type="range" id="contrast-slider" min="-50" max="50" value="0" />
-          </label>
-          <button class="btn btn-contrast-reset" id="btn-contrast-reset" title="대비 초기화">↺</button>
-        </div>
-
-        <!-- 가독성 경고: 글자-배경 대비 부족할 때만 표시 -->
-        <div class="readability-warning" id="readability-warning" hidden>
-          <span class="warning-icon">⚠</span>
-          <span class="warning-text" id="warning-text">가독성 주의</span>
-        </div>
-
-        <!-- 라이트·다크 전환 버튼 -->
-        <div class="mode-toggle" role="group" aria-label="라이트/다크 모드">
-          <button class="btn btn-mode active" data-mode="light" id="btn-light">라이트</button>
-          <button class="btn btn-mode" data-mode="dark" id="btn-dark">다크</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 4. 예시 화면 3종 (슬라이드, 웹, 앱) -->
-    <section class="mockups-section" id="mockups-section" hidden>
-      <h2 class="section-title">예시 화면</h2>
-
-      <!-- 발표 슬라이드: 표지 + 본문 -->
-      <div class="mockup-group">
-        <h3 class="mockup-group-title">슬라이드</h3>
-        <div class="mockup-row">
-          <div class="mockup-card mockup-slide-cover" id="mockup-slide-cover">
-            <!-- mockups.js가 내용 채움 -->
-          </div>
-          <div class="mockup-card mockup-slide-body" id="mockup-slide-body">
-            <!-- mockups.js가 내용 채움 -->
+        <!-- 사진 캔버스 영역 -->
+        <div class="image-display" id="image-display" hidden>
+          <!-- canvas-wrapper: overlay가 캔버스 영역만 정확히 덮도록 감쌈 -->
+          <div class="canvas-wrapper">
+            <canvas id="image-canvas" aria-label="업로드된 사진"></canvas>
+            <!-- 스포이드 모드일 때 사진 위에 덮이는 투명 레이어 -->
+            <div class="eyedropper-overlay" id="eyedropper-overlay" hidden></div>
           </div>
         </div>
-      </div>
 
-      <!-- 웹사이트 랜딩 페이지 -->
-      <div class="mockup-group">
-        <h3 class="mockup-group-title">웹사이트</h3>
-        <div class="mockup-card mockup-web" id="mockup-web">
-          <!-- mockups.js가 내용 채움 -->
+        <!-- 컬러칩 5개 (직사각형, 붙어있는 형태) -->
+        <section class="chips-section" id="chips-section" hidden>
+          <div class="chips-row" id="chips-row">
+            <!-- chips.js가 동적으로 채움 -->
+          </div>
+          <div class="repick-row" id="repick-row">
+            <button class="btn btn-repick" id="btn-repick">다시 뽑기</button>
+            <!-- 보관 버튼: 현재 팔레트를 히스토리에 추가 (최대 5개) -->
+            <button class="btn btn-keep" id="btn-keep" title="이 팔레트를 아래에 보관">보관</button>
+            <span class="keep-warning" id="keep-warning" hidden>최대 5개까지 보관할 수 있어요</span>
+          </div>
+
+          <!-- 팔레트 히스토리: 보관 버튼을 눌렀을 때 쌓이는 시안 목록 -->
+          <div class="palette-history" id="palette-history"></div>
+        </section>
+
+        <!-- 역할 배지 + 조작 버튼들 -->
+        <section class="tools-section" id="tools-section" hidden>
+          <!-- 역할별 색 배지 (roles.js가 채움) -->
+          <div class="roles-display" id="roles-display"></div>
+
+          <div class="tools-controls" id="tools-controls">
+            <!-- 역할 섞기: 5색의 역할(배경·글자·메인·포인트·보조)을 무작위로 재배정 -->
+            <div class="shuffle-wrap">
+              <button class="btn btn-shuffle" id="btn-shuffle"
+                title="5색의 역할(배경·글자·메인·포인트·보조)을 무작위로 바꿉니다">역할 섞기</button>
+              <span class="shuffle-desc">배경·글자·메인 등 역할을 무작위 재배정</span>
+            </div>
+
+            <!-- 대비 슬라이더 + 초기화 버튼 -->
+            <div class="slider-wrap">
+              <label class="slider-label" for="contrast-slider">
+                대비
+                <input type="range" id="contrast-slider" min="-50" max="50" value="0" />
+              </label>
+              <button class="btn btn-contrast-reset" id="btn-contrast-reset" title="대비 초기화">↺</button>
+            </div>
+
+            <!-- 가독성 경고: 글자-배경 대비 부족할 때만 표시 -->
+            <div class="readability-warning" id="readability-warning" hidden>
+              <span class="warning-icon">⚠</span>
+              <span class="warning-text" id="warning-text">가독성 주의</span>
+            </div>
+
+            <!-- 라이트·다크 전환 버튼 -->
+            <div class="mode-toggle" role="group" aria-label="라이트/다크 모드">
+              <button class="btn btn-mode active" data-mode="light" id="btn-light">라이트</button>
+              <button class="btn btn-mode" data-mode="dark" id="btn-dark">다크</button>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- /workspace-left -->
+
+      <!-- 우측 컬럼: 목업 탭 뷰어 -->
+      <div class="workspace-right">
+
+        <div class="mockup-viewer" id="mockup-viewer">
+          <!-- 탭 네비게이션 -->
+          <div class="mockup-tabs-nav">
+            <button class="mockup-tab-btn active" data-tab="slide">슬라이드</button>
+            <button class="mockup-tab-btn" data-tab="web">웹</button>
+            <button class="mockup-tab-btn" data-tab="app">앱</button>
+          </div>
+
+          <!-- 슬라이드 탭 -->
+          <div class="mockup-tab-pane" id="mockup-pane-slide">
+            <div class="mockup-slide-row">
+              <div class="mockup-card mockup-slide-cover" id="mockup-slide-cover"></div>
+              <div class="mockup-card mockup-slide-body" id="mockup-slide-body"></div>
+            </div>
+          </div>
+
+          <!-- 웹사이트 탭 -->
+          <div class="mockup-tab-pane" id="mockup-pane-web" hidden>
+            <div class="mockup-card mockup-web" id="mockup-web"></div>
+          </div>
+
+          <!-- 앱 탭 -->
+          <div class="mockup-tab-pane" id="mockup-pane-app" hidden>
+            <div class="mockup-card mockup-app" id="mockup-app"></div>
+          </div>
         </div>
-      </div>
 
-      <!-- 모바일 앱 화면 -->
-      <div class="mockup-group">
-        <h3 class="mockup-group-title">앱</h3>
-        <div class="mockup-card mockup-app" id="mockup-app">
-          <!-- mockups.js가 내용 채움 -->
-        </div>
-      </div>
-    </section>
+        <!-- AI 프롬프트 복사 -->
+        <section class="prompt-section" id="prompt-section" hidden>
+          <button class="btn btn-copy-prompt" id="btn-copy-prompt">AI 프롬프트 복사</button>
+          <span class="copied-badge" id="prompt-copied" hidden>복사됨</span>
+        </section>
 
-    <!-- 5. AI 프롬프트 복사 -->
-    <section class="prompt-section" id="prompt-section" hidden>
-      <button class="btn btn-copy-prompt" id="btn-copy-prompt">AI 프롬프트 복사</button>
-      <span class="copied-badge" id="prompt-copied" hidden>복사됨</span>
-    </section>
+      </div><!-- /workspace-right -->
+
+    </div><!-- /workspace -->
 
   </main>
 
   <!-- ===== 서랍 패널: 저장된 팔레트 카드 목록 ===== -->
-  <!-- 서랍 버튼을 누르면 열리고, 배경을 누르면 닫힘 -->
   <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
   <aside class="drawer-panel" id="drawer-panel" aria-label="저장된 팔레트 서랍" hidden>
     <div class="drawer-header">
@@ -183,14 +192,11 @@
       <button class="btn btn-drawer-close" id="btn-drawer-close" aria-label="서랍 닫기">✕</button>
     </div>
     <div class="drawer-list" id="drawer-list">
-      <!-- storage.js가 카드 목록을 동적으로 채움 -->
       <p class="drawer-empty">저장된 팔레트가 없어요.</p>
     </div>
   </aside>
 
   <!-- ===== JavaScript 진입점 ===== -->
-  <!-- type="module"을 써야 import/export가 동작함 -->
-  <!-- 로컬에서는 Live Server로, 배포 후에는 GitHub Pages 링크로 열 것 -->
   <script type="module" src="js/main.js"></script>
 
 </body>

@@ -26,7 +26,8 @@
 
 /* ========== 슬라이드 표지 ========== */
 .mockup-slide-cover {
-  width: 400px;
+  width: 100%;
+  max-width: 340px;
   aspect-ratio: 16 / 9;
   background-color: var(--mk-bg);
   color: var(--mk-text);
@@ -90,7 +91,8 @@
 
 /* ========== 슬라이드 본문 ========== */
 .mockup-slide-body {
-  width: 400px;
+  width: 100%;
+  max-width: 340px;
   aspect-ratio: 16 / 9;
   background-color: var(--mk-bg);
   color: var(--mk-text);

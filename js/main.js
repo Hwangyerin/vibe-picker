@@ -72,6 +72,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initDrawer();
   setOnCardLoaded(handleCardLoaded);
 
+  /* 목업 탭 네비게이션 초기화 */
+  initMockupTabs();
+
   /* 홈 화면 저장된 팔레트 목록 초기 렌더 */
   renderHomePalettes();
 
@@ -95,11 +98,12 @@ document.addEventListener('DOMContentLoaded', () => {
  * 후보 색 추출 → 대표색 5개 선택 → 역할 배정 → UI 업데이트
  */
 function handleImageLoaded(img) {
-  /* 읽기 전용 뷰였으면 해제 (서랍에서 불러온 뒤 새 사진 올릴 때) */
+  /* 워크스페이스로 전환 + 읽기 전용 해제 */
+  showWorkspace();
   setReadonlyView(false);
 
-  /* 사진 업로드 화면에서만 보이는 저장 팔레트 목록 숨김 */
-  document.getElementById('home-palettes-section').hidden = true;
+  /* 사진 캔버스 영역 표시 */
+  document.getElementById('image-display').hidden = false;
 
   /* 1. 후보 색 10~12개 추출 */
   const candidates = extractColors(img);
@@ -139,7 +143,8 @@ function updateUI() {
   /* 칩 렌더링 */
   renderChips(displayPalette, myPicks);
 
-  /* 도구 섹션 표시 */
+  /* 칩·도구 섹션 표시 */
+  document.getElementById('chips-section').hidden = false;
   document.getElementById('tools-section').hidden = false;
 
   /* 역할 배지 업데이트 */
@@ -437,8 +442,9 @@ function handleCardLoaded(card, key) {
   document.getElementById('btn-light').classList.toggle('active', mode === 'light');
   document.getElementById('btn-dark').classList.toggle('active', mode === 'dark');
 
-  /* 업로드 영역 통째로 숨김, 버튼·도구 영역 숨김, 저장 팔레트 목록 숨김 */
-  document.getElementById('home-palettes-section').hidden = true;
+  /* 워크스페이스 전환 + 읽기 전용 (이미지 없음, 편집 버튼 숨김) */
+  showWorkspace();
+  document.getElementById('image-display').hidden = true;
   setReadonlyView(true);
 
   updateUI();
@@ -450,10 +456,39 @@ function handleCardLoaded(card, key) {
  * - false: 사진 업로드 후 정상 편집 상태
  */
 function setReadonlyView(readonly) {
-  document.getElementById('upload-section').hidden  = readonly;
   document.getElementById('repick-row').hidden      = readonly;
   document.getElementById('palette-history').hidden = readonly;
   document.getElementById('tools-controls').hidden  = readonly;
+}
+
+/** 워크스페이스 화면으로 전환 (홈 화면 숨김) */
+function showWorkspace() {
+  document.getElementById('home-screen').hidden = true;
+  document.getElementById('workspace').hidden   = false;
+}
+
+/** 홈 화면으로 전환 (워크스페이스 숨김) */
+function showHomeScreen() {
+  document.getElementById('workspace').hidden   = true;
+  document.getElementById('home-screen').hidden = false;
+}
+
+/** 목업 탭 네비게이션 초기화 */
+function initMockupTabs() {
+  document.querySelectorAll('.mockup-tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+
+      /* 탭 버튼 활성 상태 */
+      document.querySelectorAll('.mockup-tab-btn')
+        .forEach((b) => b.classList.toggle('active', b === btn));
+
+      /* 탭 패널 표시/숨김 */
+      document.querySelectorAll('.mockup-tab-pane').forEach((pane) => {
+        pane.hidden = pane.id !== `mockup-pane-${tab}`;
+      });
+    });
+  });
 }
 
 /** 스포이드로 색 선택됐을 때 */
@@ -519,15 +554,14 @@ function handleHomeClick() {
     paletteHistory: [],
   });
 
-  /* 읽기 전용 뷰 해제 */
-  setReadonlyView(false);
+  /* 홈 화면으로 전환 */
+  showHomeScreen();
 
-  /* UI 초기화 */
+  /* 워크스페이스 내부 상태 초기화 */
   document.getElementById('upload-placeholder').hidden = false;
   document.getElementById('image-display').hidden      = true;
   document.getElementById('chips-section').hidden      = true;
   document.getElementById('tools-section').hidden      = true;
-  document.getElementById('mockups-section').hidden    = true;
   document.getElementById('prompt-section').hidden     = true;
 
   /* 슬라이더·모드 버튼 리셋 */
@@ -539,6 +573,9 @@ function handleHomeClick() {
   const historyEl = document.getElementById('palette-history');
   if (historyEl) historyEl.innerHTML = '';
   document.getElementById('keep-warning').hidden = true;
+
+  /* 읽기 전용 뷰 해제 */
+  setReadonlyView(false);
 
   /* 홈 화면 팔레트 목록 갱신 */
   renderHomePalettes();

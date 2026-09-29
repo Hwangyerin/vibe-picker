@@ -24,9 +24,6 @@ export function renderMockups(roles, mode = 'light') {
 
   /* 라이트·다크 모드 적용 */
   applyMode(mode);
-
-  /* 목업 섹션 표시 */
-  document.getElementById('mockups-section').hidden = false;
 }
 
 /**

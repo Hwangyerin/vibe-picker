@@ -114,23 +114,18 @@ function loadSample(path) {
 }
 
 /**
- * 업로드 placeholder를 숨기고, 사진 캔버스를 표시
+ * 캔버스에 사진을 그림
+ * (화면 전환은 main.js handleImageLoaded에서 처리)
  * @param {HTMLImageElement} img
  */
 function showImageDisplay(img) {
-  const placeholder   = document.getElementById('upload-placeholder');
-  const imageDisplay  = document.getElementById('image-display');
-  const canvas        = document.getElementById('image-canvas');
+  const canvas = document.getElementById('image-canvas');
 
   /* 캔버스 크기를 이미지에 맞게 설정 */
   canvas.width  = img.naturalWidth;
   canvas.height = img.naturalHeight;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0);
-
-  /* 전환 */
-  placeholder.hidden  = true;
-  imageDisplay.hidden = false;
 }
 
 /**

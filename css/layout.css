@@ -1,6 +1,6 @@
 /* ==========================================================
    layout.css — 전체 페이지 배치
-   헤더, 사진 영역, 컬러칩 영역, 목업 영역, 프롬프트 영역
+   헤더, 홈 화면, 워크스페이스(좌측 칸 + 우측 목업 뷰어)
    ========================================================== */
 
 /* ---------- 헤더 ---------- */
@@ -22,7 +22,6 @@
   letter-spacing: -0.02em;
   color: var(--color-text);
   cursor: pointer;
-  /* 홈 버튼 역할: 호버 시 살짝 연하게 */
   transition: opacity var(--transition-fast);
   user-select: none;
 }
@@ -42,10 +41,16 @@
 
 /* ---------- 메인 콘텐츠 ---------- */
 .app-main {
-  /* 최대 너비를 두어 너무 넓어지지 않게 */
-  max-width: 1200px;
+  max-width: 1300px;
   margin: 0 auto;
   padding: var(--space-xl) var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+/* ---------- 홈 화면 ---------- */
+#home-screen {
   display: flex;
   flex-direction: column;
   gap: var(--space-xl);
@@ -54,70 +59,6 @@
 /* ---------- 사진 업로드 섹션 ---------- */
 .upload-section {
   width: 100%;
-}
-
-/* ---------- 홈 화면 저장된 팔레트 ---------- */
-.home-palettes-section {
-  width: 100%;
-}
-
-.home-palettes-title {
-  font-size: 0.8125rem;   /* 13px */
-  font-weight: 600;
-  color: var(--color-muted);
-  letter-spacing: 0.04em;
-  margin-bottom: var(--space-md);
-}
-
-.home-palettes-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-sm);
-}
-
-/* 홈 화면 팔레트 카드 — 색 바 자체가 버튼 */
-.home-palette-card {
-  display: flex;
-  height: 48px;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  cursor: pointer;
-  border: none;
-  padding: 0;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-}
-.home-palette-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* 역할 비중 가로 바 */
-.home-palette-bar {
-  display: flex;
-  width: 100%;
-  height: 100%;
-}
-/* flex 비율과 animation-delay는 JS(buildColorBar)에서 style로 직접 지정 */
-.home-palette-block {
-  min-width: 0;
-  transform-origin: left center;
-  animation: palette-reveal 0.5s ease-out both;
-}
-
-@keyframes palette-reveal {
-  from {
-    opacity: 0;
-    transform: scaleX(0);
-  }
-  to {
-    opacity: 1;
-    transform: scaleX(1);
-  }
-}
-
-/* 카드 배경을 흰색으로 — 블록이 투명할 때 흰색이 비쳐 디졸브 효과 */
-.home-palette-card {
-  background-color: #fff;
 }
 
 /* 사진이 없을 때: 업로드 안내 박스 */
@@ -131,11 +72,9 @@
   border-radius: var(--radius-lg);
   background-color: var(--color-surface);
   text-align: center;
-  /* 드래그 중일 때 강조 (upload.js에서 클래스로 제어) */
   transition: border-color var(--transition-fast), background-color var(--transition-fast);
 }
 
-/* 드래그 오버 상태 */
 .upload-placeholder.drag-over {
   border-color: var(--color-text);
   background-color: var(--color-border);
@@ -183,30 +122,107 @@
   display: block;
 }
 
-/* 사진이 올라온 뒤 보이는 캔버스 영역 */
-.image-display {
+/* ---------- 홈 화면 저장된 팔레트 ---------- */
+.home-palettes-section {
+  width: 100%;
+}
+
+.home-palettes-title {
+  font-size: 0.8125rem;   /* 13px */
+  font-weight: 600;
+  color: var(--color-muted);
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-md);
+}
+
+.home-palettes-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+}
+
+/* 홈 화면 팔레트 카드 */
+.home-palette-card {
   display: flex;
-  justify-content: center;
+  height: 48px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  background-color: #fff;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.home-palette-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.home-palette-bar {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+.home-palette-block {
+  min-width: 0;
+  transform-origin: left center;
+  animation: palette-reveal 0.5s ease-out both;
+}
+
+@keyframes palette-reveal {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+/* ========================================================
+   워크스페이스: 좌측 + 우측 2단 레이아웃
+   ======================================================== */
+.workspace {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+/* ---------- 좌측: 사진 + 칩 + 도구 ---------- */
+.workspace-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+/* 사진 캔버스 영역 */
+.image-display {
+  width: 100%;
 }
 
 /* canvas-wrapper: 캔버스 크기만큼만 감싸서 overlay가 정확히 캔버스 위를 덮게 함 */
 .canvas-wrapper {
-  position: relative;   /* overlay의 기준점 */
-  display: inline-flex; /* 내용물(캔버스) 크기에 딱 맞게 줄어듦 */
-  max-width: 100%;
+  position: relative;
+  display: block;
+  width: 100%;
 }
 
 #image-canvas {
-  max-width: 100%;
-  max-height: 480px;
+  width: 100%;
+  height: auto;
+  max-height: 420px;
   border-radius: var(--radius-md);
   display: block;
+  object-fit: contain;
 }
 
-/* 스포이드 모드 오버레이: 캔버스 위를 정확히 덮음 */
+/* 스포이드 모드 오버레이 */
 .eyedropper-overlay {
   position: absolute;
-  inset: 0;             /* canvas-wrapper 기준이므로 캔버스와 딱 맞음 */
+  inset: 0;
   cursor: crosshair;
   border-radius: var(--radius-md);
 }
@@ -215,14 +231,7 @@
 .chips-section {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: var(--space-md);
-}
-
-.chips-row {
-  display: flex;
-  gap: var(--space-lg);
-  flex-wrap: wrap;
 }
 
 /* 다시 뽑기 + 보관 버튼을 한 줄에 */
@@ -256,20 +265,17 @@
   gap: var(--space-sm);
   flex-wrap: wrap;
   align-items: center;
-  min-height: 0; /* 카드가 없으면 자리 차지 안 함 */
+  min-height: 0;
 }
-/* 카드가 하나라도 있으면 위 여백 */
 .palette-history:not(:empty) {
   margin-top: var(--space-xs);
 }
 
-/* 히스토리 카드: overflow: hidden 제거 → X 버튼이 바깥으로 걸칠 수 있음 */
 .history-card {
   position: relative;
   width: 90px;
   height: 32px;
   border-radius: var(--radius-sm);
-  /* overflow: hidden 은 내부 래퍼에만 적용 */
   cursor: pointer;
   flex-shrink: 0;
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
@@ -279,7 +285,6 @@
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
 }
 
-/* 색 블록 래퍼: border-radius + overflow: hidden 을 여기서만 처리 */
 .history-card-inner {
   width: 100%;
   height: 100%;
@@ -288,7 +293,6 @@
   border: 1px solid var(--color-border);
 }
 
-/* 5색이 가로로 꽉 채워짐, 패딩 없음 */
 .history-card-colors {
   display: flex;
   width: 100%;
@@ -298,7 +302,6 @@
   flex: 1;
 }
 
-/* X 버튼: 카드 우측 상단 코너에 3/4는 바깥으로 걸쳐서 표시 */
 .history-card-remove {
   position: absolute;
   top: -10px;
@@ -324,7 +327,7 @@
   background: rgba(180, 30, 30, 0.9);
 }
 
-/* ---------- 도구 섹션 (역할 배정 + 조작 버튼들) ---------- */
+/* ---------- 도구 섹션 ---------- */
 .tools-section {
   display: flex;
   flex-direction: column;
@@ -344,7 +347,6 @@
   flex-wrap: wrap;
 }
 
-/* 역할 섞기 버튼 + 부연 설명 */
 .shuffle-wrap {
   display: flex;
   flex-direction: column;
@@ -356,14 +358,12 @@
   white-space: nowrap;
 }
 
-/* 대비 슬라이더 + 초기화 버튼 묶음 */
 .slider-wrap {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
 }
 
-/* 대비 초기화 버튼: 작고 조용하게 */
 .btn-contrast-reset {
   padding: 2px 6px;
   font-size: 0.875rem;
@@ -378,21 +378,19 @@
   background: var(--color-surface);
 }
 
-/* 대비 슬라이더 */
 .slider-label {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  font-size: 0.875rem;     /* 14px */
+  font-size: 0.875rem;
   color: var(--color-text-sub);
 }
 .slider-label input[type="range"] {
-  width: 140px;
+  width: 120px;
   cursor: pointer;
   accent-color: var(--color-text);
 }
 
-/* 가독성 경고 */
 .readability-warning {
   display: flex;
   align-items: center;
@@ -402,7 +400,6 @@
   font-weight: 500;
 }
 
-/* 라이트·다크 전환 버튼 그룹 */
 .mode-toggle {
   display: flex;
   border: 1px solid var(--color-border);
@@ -419,43 +416,84 @@
   color: var(--color-accent-fg);
 }
 
-/* ---------- 예시 화면(목업) 섹션 ---------- */
-.mockups-section {
+/* ========================================================
+   우측: 목업 뷰어
+   ======================================================== */
+.workspace-right {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
+  gap: var(--space-lg);
+  min-width: 0;
 }
 
-.mockup-group {
+/* 목업 뷰어 박스 */
+.mockup-viewer {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background-color: var(--color-white);
+}
+
+/* ---------- 탭 네비게이션 ---------- */
+.mockup-tabs-nav {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+}
+
+.mockup-tab-btn {
+  flex: 1;
+  padding: var(--space-sm) var(--space-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast),
+              background-color var(--transition-fast);
+  margin-bottom: -1px;
+}
+.mockup-tab-btn:hover {
+  color: var(--color-text);
+  background-color: var(--color-border);
+}
+.mockup-tab-btn.active {
+  color: var(--color-text);
+  font-weight: 600;
+  border-bottom-color: var(--color-text);
+  background-color: var(--color-white);
+}
+
+/* ---------- 탭 패널 ---------- */
+.mockup-tab-pane {
+  padding: var(--space-lg);
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  align-items: center;
 }
 
-.mockup-group-title {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-muted);
-  letter-spacing: 0.04em;
-}
-
-/* 슬라이드는 가로로 나란히 */
-.mockup-row {
+/* 슬라이드 표지 + 본문 나란히 */
+.mockup-slide-row {
   display: flex;
-  gap: var(--space-lg);
+  gap: var(--space-md);
   flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
 }
 
 /* 목업 카드 공통 */
 .mockup-card {
   border-radius: var(--radius-md);
   overflow: hidden;
-  /* 색은 mockups.js가 CSS 변수로 주입 */
 }
 
 /* ---------- AI 프롬프트 섹션 ---------- */
 .prompt-section {
   display: flex;
   align-items: center;
+  gap: var(--space-sm);
   padding-bottom: var(--space-xl);
 }
