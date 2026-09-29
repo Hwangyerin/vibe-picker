@@ -34,21 +34,46 @@
 
 /* ---------- 동그란 색 원 ---------- */
 .chip-swatch-row {
+  position: relative; /* X 버튼 위치 기준점 */
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: var(--space-md) var(--space-sm) var(--space-sm);
-  /* 세 영역 사이 구분선을 border-top으로 구현 */
 }
 
 .chip-swatch {
   width: 44px;
   height: 44px;
   border-radius: var(--radius-full);
-  /* 배경색은 JS에서 style.backgroundColor로 주입 */
   border: 1px solid rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
+}
+
+/* my pick 해제 X 버튼 — 호버 시에만 등장 */
+.chip-mypick-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  display: none;            /* 기본 숨김 */
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  /* 칩 클릭(스포이드)과 이벤트가 겹치지 않도록 stopPropagation 처리는 JS에서 함 */
+}
+.color-chip:hover .chip-mypick-remove {
+  display: flex;            /* 호버 시 표시 */
+}
+.chip-mypick-remove:hover {
+  background: rgba(180, 30, 30, 0.85);
 }
 
 /* my pick 뱃지 */

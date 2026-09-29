@@ -21,6 +21,18 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--color-text);
+  cursor: pointer;
+  /* 홈 버튼 역할: 호버 시 살짝 연하게 */
+  transition: opacity var(--transition-fast);
+  user-select: none;
+}
+.app-title:hover {
+  opacity: 0.6;
+}
+.app-title:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .header-actions {
@@ -109,9 +121,15 @@
 
 /* 사진이 올라온 뒤 보이는 캔버스 영역 */
 .image-display {
-  position: relative;
   display: flex;
   justify-content: center;
+}
+
+/* canvas-wrapper: 캔버스 크기만큼만 감싸서 overlay가 정확히 캔버스 위를 덮게 함 */
+.canvas-wrapper {
+  position: relative;   /* overlay의 기준점 */
+  display: inline-flex; /* 내용물(캔버스) 크기에 딱 맞게 줄어듦 */
+  max-width: 100%;
 }
 
 #image-canvas {
@@ -119,13 +137,12 @@
   max-height: 480px;
   border-radius: var(--radius-md);
   display: block;
-  /* 스포이드 모드에서 커서 변경은 JS에서 처리 */
 }
 
-/* 스포이드 모드 오버레이: 클릭 영역 확보 */
+/* 스포이드 모드 오버레이: 캔버스 위를 정확히 덮음 */
 .eyedropper-overlay {
   position: absolute;
-  inset: 0;
+  inset: 0;             /* canvas-wrapper 기준이므로 캔버스와 딱 맞음 */
   cursor: crosshair;
   border-radius: var(--radius-md);
 }

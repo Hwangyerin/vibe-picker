@@ -23,7 +23,8 @@
 
   <!-- ===== 헤더: 앱 이름 + 우측 버튼들 ===== -->
   <header class="app-header">
-    <h1 class="app-title">VibePicker</h1>
+    <!-- 타이틀 클릭 → 초기 화면으로 리셋 (홈 버튼 역할) -->
+    <h1 class="app-title" id="app-title" role="button" tabindex="0" title="처음으로">VibePicker</h1>
     <div class="header-actions">
       <!-- 저장 버튼: 변경이 있을 때만 활성화됨 (2단계 이후 로직 연결) -->
       <button class="btn btn-save" id="btn-save" disabled>저장</button>
@@ -62,9 +63,12 @@
 
       <!-- 사진이 올라온 뒤 보이는 영역 (처음엔 숨김) -->
       <div class="image-display" id="image-display" hidden>
-        <canvas id="image-canvas" aria-label="업로드된 사진"></canvas>
-        <!-- 스포이드 모드일 때 사진 위에 덮이는 투명 레이어 -->
-        <div class="eyedropper-overlay" id="eyedropper-overlay" hidden></div>
+        <!-- canvas-wrapper: overlay가 캔버스 영역만 정확히 덮도록 감쌈 -->
+        <div class="canvas-wrapper">
+          <canvas id="image-canvas" aria-label="업로드된 사진"></canvas>
+          <!-- 스포이드 모드일 때 사진 위에 덮이는 투명 레이어 -->
+          <div class="eyedropper-overlay" id="eyedropper-overlay" hidden></div>
+        </div>
       </div>
     </section>
 

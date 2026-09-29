@@ -12,12 +12,23 @@ let eyedropperTargetIdx = null;
 /* 스포이드로 픽셀을 집었을 때 호출할 콜백 (main.js에서 등록) */
 let onEyedropperPick = null;
 
+/* my pick X 버튼을 눌렀을 때 호출할 콜백 (main.js에서 등록) */
+let onMyPickRemove = null;
+
 /**
  * 스포이드 콜백 등록
  * @param {(hex: string, chipIdx: number) => void} fn
  */
 export function setOnEyedropperPick(fn) {
   onEyedropperPick = fn;
+}
+
+/**
+ * my pick 해제 콜백 등록
+ * @param {(chipIdx: number) => void} fn
+ */
+export function setOnMyPickRemove(fn) {
+  onMyPickRemove = fn;
 }
 
 /**
@@ -64,12 +75,23 @@ function buildChip(hex, idx, isMyPick) {
   swatch.style.backgroundColor = hex;
   swatchRow.appendChild(swatch);
 
-  /* my pick 뱃지 */
+  /* my pick 뱃지 + 호버 시 나타나는 X 해제 버튼 */
   if (isMyPick) {
     const badge = document.createElement('span');
     badge.className = 'chip-mypick';
     badge.textContent = 'my pick';
     swatchRow.appendChild(badge);
+
+    /* X 버튼: 호버 시 표시, 클릭하면 my pick 해제 후 어울리는 색으로 교체 */
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'chip-mypick-remove';
+    removeBtn.textContent = '✕';
+    removeBtn.title = 'my pick 해제 — 어울리는 색으로 교체됩니다';
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation(); /* 칩 클릭(스포이드 활성화)과 충돌 방지 */
+      onMyPickRemove?.(idx);
+    });
+    swatchRow.appendChild(removeBtn);
   }
 
   /* ── HEX 줄 ── */
@@ -209,6 +231,9 @@ export function initEyedropperOverlay() {
     const scaleY = canvas.height / rect.height;
     const x = Math.round((e.clientX - rect.left)  * scaleX);
     const y = Math.round((e.clientY - rect.top)   * scaleY);
+
+    /* 캔버스 범위를 벗어난 클릭은 무시 (canvas-wrapper로 막히지만 이중 방어) */
+    if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
 
     /* 해당 픽셀의 RGBA 읽기 */
     const ctx  = canvas.getContext('2d');

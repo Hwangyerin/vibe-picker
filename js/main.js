@@ -9,7 +9,8 @@ import { extractColors, pickDistinct }             from './extract.js';
 import { adjustLightness }                         from './color.js';
 import { assignRoles, shuffleRoles, readabilityWarning } from './roles.js';
 import { renderChips, initEyedropperOverlay,
-         setOnEyedropperPick, deactivateEyedropper } from './chips.js';
+         setOnEyedropperPick, setOnMyPickRemove,
+         deactivateEyedropper } from './chips.js';
 import { renderMockups, applyMode }                from './mockups.js';
 import { initPrompt, showPromptSection }           from './prompt.js';
 import { initSaveButton, initDrawer,
@@ -30,6 +31,11 @@ document.addEventListener('DOMContentLoaded', () => {
   /* 스포이드 오버레이 초기화 */
   initEyedropperOverlay();
   setOnEyedropperPick(handleEyedropperPick);
+  setOnMyPickRemove(handleMyPickRemove);
+
+  /* 홈 버튼 (앱 타이틀 클릭 → 초기 화면으로 리셋) */
+  document.getElementById('app-title')
+    .addEventListener('click', handleHomeClick);
 
   /* 다시 뽑기 버튼 */
   document.getElementById('btn-repick')
@@ -91,12 +97,18 @@ function handleImageLoaded(img) {
 
 /**
  * 현재 state를 바탕으로 칩·목업·경고·버튼 상태를 갱신
+ * - 대비 슬라이더 오프셋이 있으면 칩 표시에도 반영
  */
 function updateUI() {
-  const { palette, myPicks, roles, mode } = state;
+  const { palette, myPicks, roles, mode, contrastOffset } = state;
+
+  /* 대비 오프셋이 있으면 표시용 팔레트에 적용 (원본 palette는 보존) */
+  const displayPalette = contrastOffset !== 0
+    ? palette.map((hex) => adjustLightness(hex, contrastOffset))
+    : palette;
 
   /* 칩 렌더링 */
-  renderChips(palette, myPicks);
+  renderChips(displayPalette, myPicks);
 
   /* 도구 섹션 표시 */
   document.getElementById('tools-section').hidden = false;
@@ -228,39 +240,51 @@ function handleModeChange(mode) {
 
 /** 서랍에서 카드 불러오기 */
 function handleCardLoaded(card, key) {
-  /* 저장된 이미지(썸네일)를 화면에 보여줌 */
-  if (card.thumbnail) {
-    const img = new Image();
-    img.onload = () => {
-      setState({
-        image: img,
-        thumbnail: card.thumbnail,
-        palette: card.palette,
-        myPicks: new Set(card.myPicks),
-        roles: card.roles,
-        contrastOffset: card.contrastOffset ?? 0,
-        mode: card.mode ?? 'light',
-        loadedCardKey: key,
-        isDirty: false,
-      });
+  if (!card.thumbnail) return;
 
-      /* 대비 슬라이더 값 복원 */
-      document.getElementById('contrast-slider').value = card.contrastOffset ?? 0;
+  const img = new Image();
+  img.onload = () => {
+    const offset = card.contrastOffset ?? 0;
 
-      /* 업로드 placeholder를 숨기고 이미지 캔버스 표시 */
-      const placeholder  = document.getElementById('upload-placeholder');
-      const imageDisplay = document.getElementById('image-display');
-      const canvas       = document.getElementById('image-canvas');
-      canvas.width  = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      canvas.getContext('2d').drawImage(img, 0, 0);
-      placeholder.hidden  = true;
-      imageDisplay.hidden = false;
+    /* 원본 palette와 offset을 기반으로 roles를 재계산해 일관성 유지 */
+    const adjustedPalette = offset !== 0
+      ? card.palette.map((hex) => adjustLightness(hex, offset))
+      : card.palette;
+    const roles = assignRoles(adjustedPalette);
 
-      updateUI();
-    };
-    img.src = card.thumbnail;
-  }
+    setState({
+      image: img,
+      thumbnail: card.thumbnail,
+      palette: card.palette,           /* 원본 보존 */
+      myPicks: new Set(card.myPicks),
+      roles,                           /* 재계산된 roles */
+      contrastOffset: offset,
+      mode: card.mode ?? 'light',
+      loadedCardKey: key,
+      isDirty: false,
+    });
+
+    /* 슬라이더 UI 복원 */
+    document.getElementById('contrast-slider').value = offset;
+
+    /* 라이트·다크 버튼 상태 복원 */
+    const mode = card.mode ?? 'light';
+    document.getElementById('btn-light').classList.toggle('active', mode === 'light');
+    document.getElementById('btn-dark').classList.toggle('active', mode === 'dark');
+
+    /* 사진 캔버스 표시 */
+    const placeholder  = document.getElementById('upload-placeholder');
+    const imageDisplay = document.getElementById('image-display');
+    const canvas       = document.getElementById('image-canvas');
+    canvas.width  = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+    placeholder.hidden  = true;
+    imageDisplay.hidden = false;
+
+    updateUI();
+  };
+  img.src = card.thumbnail;
 }
 
 /** 스포이드로 색 선택됐을 때 */
@@ -274,4 +298,70 @@ function handleEyedropperPick(hex, chipIdx) {
   const roles = assignRoles(newPalette);
   setState({ palette: newPalette, myPicks: newMyPicks, roles, isDirty: true });
   updateUI();
+}
+
+/**
+ * my pick X 버튼을 눌렀을 때
+ * - 해당 칩의 my pick 해제
+ * - 후보색 중 나머지 4색과 가장 다른 색으로 교체
+ */
+function handleMyPickRemove(chipIdx) {
+  const { palette, candidateColors, myPicks } = state;
+
+  /* 나머지 4색 (교체될 칩 제외) */
+  const remaining = palette.filter((_, i) => i !== chipIdx);
+
+  /* 후보색 중 나머지 4색과 가장 멀리 떨어진 색 1개 고르기
+     pickDistinct(candidates, fixed, count) 활용:
+     fixed = 나머지 4색, count = 5 → 5번째가 새 색 */
+  const candidates = candidateColors.length > 0 ? candidateColors : palette;
+  const picked = pickDistinct(candidates, new Set(remaining), remaining.length + 1);
+  const newColor = picked[remaining.length] ?? candidates[0];
+
+  /* 팔레트 교체 */
+  const newPalette = [...palette];
+  newPalette[chipIdx] = newColor;
+
+  /* my pick 해제 */
+  const newMyPicks = new Set(myPicks);
+  newMyPicks.delete(chipIdx);
+
+  const roles = assignRoles(newPalette);
+  setState({ palette: newPalette, myPicks: newMyPicks, roles, isDirty: true });
+  updateUI();
+}
+
+/**
+ * 홈 버튼 클릭 → 초기 화면으로 완전 리셋
+ */
+function handleHomeClick() {
+  /* 상태 초기화 */
+  setState({
+    image: null,
+    thumbnail: null,
+    candidateColors: [],
+    palette: [],
+    myPicks: new Set(),
+    roles: null,
+    contrastOffset: 0,
+    mode: 'light',
+    loadedCardKey: null,
+    isDirty: false,
+  });
+
+  /* UI 초기화 */
+  document.getElementById('upload-placeholder').hidden = false;
+  document.getElementById('image-display').hidden      = true;
+  document.getElementById('chips-section').hidden      = true;
+  document.getElementById('tools-section').hidden      = true;
+  document.getElementById('mockups-section').hidden    = true;
+  document.getElementById('prompt-section').hidden     = true;
+
+  /* 슬라이더·모드 버튼 리셋 */
+  document.getElementById('contrast-slider').value = 0;
+  document.getElementById('btn-light').classList.add('active');
+  document.getElementById('btn-dark').classList.remove('active');
+
+  /* 진행 중이던 스포이드 모드 해제 */
+  deactivateEyedropper();
 }

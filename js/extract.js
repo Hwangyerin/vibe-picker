@@ -93,7 +93,9 @@ export function pickDistinct(candidates, myPickColors = new Set(), count = 5) {
  * @returns {number[][]} 클러스터 중심 [r, g, b] 배열
  */
 function kmeans(pixels, k, maxIter) {
+  /* 픽셀이 없거나 k보다 적으면 있는 픽셀만 반환 */
   if (pixels.length === 0) return [];
+  if (pixels.length < k) return pixels.map((p) => [...p]);
 
   /* 초기 중심: 픽셀 중 균등 간격으로 k개 선택 */
   let centers = [];
