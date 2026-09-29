@@ -79,62 +79,56 @@
 /* ---------- 팔레트 카드 ---------- */
 .palette-card {
   display: flex;
-  align-items: center;
-  gap: var(--space-md);
+  flex-direction: column;
+  gap: var(--space-xs);
   padding: var(--space-sm) var(--space-md);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: background-color var(--transition-fast), border-color var(--transition-fast);
   background-color: var(--color-white);
+  position: relative;
 }
 .palette-card:hover {
   background-color: var(--color-surface);
   border-color: var(--color-text);
 }
 
-/* 저장된 사진 썸네일 */
-.card-thumb {
-  width: 48px;
-  height: 36px;
+/* 5색 가로 바 */
+.card-color-bar {
+  display: flex;
+  height: 28px;
   border-radius: var(--radius-sm);
   overflow: hidden;
-  flex-shrink: 0;
-  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
 }
-.card-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-/* 팔레트 5색 미니 스와치 */
-.card-colors {
-  display: flex;
-  gap: 3px;
+.card-bar-block {
   flex: 1;
 }
-.card-swatch {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1px solid rgba(0,0,0,0.08);
-  flex-shrink: 0;
+
+/* 저장 날짜 */
+.card-meta {
+  font-size: 0.75rem;
+  color: var(--color-muted);
 }
 
 /* 삭제 버튼 */
 .btn-card-delete {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
   color: var(--color-muted);
-  font-size: 0.875rem;
-  width: 28px;
-  height: 28px;
-  display: flex;
+  font-size: 0.75rem;
+  width: 22px;
+  height: 22px;
+  display: none;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  flex-shrink: 0;
   transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+.palette-card:hover .btn-card-delete {
+  display: flex;
 }
 .btn-card-delete:hover {
   background-color: #fee2e2;

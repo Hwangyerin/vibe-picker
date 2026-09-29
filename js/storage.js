@@ -28,7 +28,7 @@ export function initSaveButton() {
  * 현재 작업 상태를 카드로 저장
  */
 function saveCurrentCard() {
-  const { palette, myPicks, roles, contrastOffset, mode, thumbnail, previewImage, loadedCardKey } = state;
+  const { palette, myPicks, roles, contrastOffset, mode, loadedCardKey } = state;
 
   if (!palette.length || !roles) return;
 
@@ -41,15 +41,13 @@ function saveCurrentCard() {
     return;
   }
 
-  /* 저장할 카드 데이터 */
+  /* 저장할 카드 데이터 (이미지는 저장하지 않음 — 팔레트 정보만) */
   const card = {
     palette,
     myPicks: [...myPicks],
     roles,
     contrastOffset,
     mode,
-    thumbnail,
-    previewImage,   /* 800px 대형 — 서랍에서 불러올 때 캔버스 표시용 */
     savedAt: Date.now(),
   };
 
@@ -141,24 +139,21 @@ function buildCardEl(key, card) {
   const el = document.createElement('div');
   el.className = 'palette-card';
 
-  /* 썸네일 */
-  const thumb = document.createElement('div');
-  thumb.className = 'card-thumb';
-  if (card.thumbnail) {
-    const img = document.createElement('img');
-    img.src = card.thumbnail;
-    img.alt = '저장된 팔레트 사진';
-    thumb.appendChild(img);
-  }
-
-  /* 5색 미니 스와치 */
-  const colors = document.createElement('div');
-  colors.className = 'card-colors';
+  /* 5색 가로 바 */
+  const bar = document.createElement('div');
+  bar.className = 'card-color-bar';
   card.palette.forEach((hex) => {
-    const sw = document.createElement('div');
-    sw.className = 'card-swatch';
-    sw.style.backgroundColor = hex;
-    colors.appendChild(sw);
+    const block = document.createElement('div');
+    block.className = 'card-bar-block';
+    block.style.backgroundColor = hex;
+    bar.appendChild(block);
+  });
+
+  /* 저장 날짜 */
+  const meta = document.createElement('span');
+  meta.className = 'card-meta';
+  meta.textContent = new Date(card.savedAt).toLocaleDateString('ko-KR', {
+    month: 'numeric', day: 'numeric',
   });
 
   /* 삭제 버튼 */
@@ -167,7 +162,7 @@ function buildCardEl(key, card) {
   btnDel.textContent = '✕';
   btnDel.title = '카드 삭제';
   btnDel.addEventListener('click', (e) => {
-    e.stopPropagation(); /* 카드 클릭(불러오기)과 충돌 방지 */
+    e.stopPropagation();
     deleteCard(key);
     renderDrawerList();
   });
@@ -178,8 +173,8 @@ function buildCardEl(key, card) {
     closeDrawer();
   });
 
-  el.appendChild(thumb);
-  el.appendChild(colors);
+  el.appendChild(bar);
+  el.appendChild(meta);
   el.appendChild(btnDel);
 
   return el;

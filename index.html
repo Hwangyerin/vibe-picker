@@ -77,10 +77,11 @@
       <div class="chips-row" id="chips-row">
         <!-- 컬러칩은 chips.js가 동적으로 채움 -->
       </div>
-      <div class="repick-row">
+      <div class="repick-row" id="repick-row">
         <button class="btn btn-repick" id="btn-repick">다시 뽑기</button>
-        <!-- 보관 버튼: 현재 팔레트를 히스토리에 추가 -->
+        <!-- 보관 버튼: 현재 팔레트를 히스토리에 추가 (최대 5개) -->
         <button class="btn btn-keep" id="btn-keep" title="이 팔레트를 아래에 보관">보관</button>
+        <span class="keep-warning" id="keep-warning" hidden>최대 5개까지 보관할 수 있어요</span>
       </div>
 
       <!-- 팔레트 히스토리: 보관 버튼을 눌렀을 때 쌓이는 시안 목록 -->
@@ -92,7 +93,7 @@
       <!-- 역할별 색 배지 (roles.js가 채움) -->
       <div class="roles-display" id="roles-display"></div>
 
-      <div class="tools-controls">
+      <div class="tools-controls" id="tools-controls">
         <!-- 역할 섞기: 5색의 역할(배경·글자·메인·포인트·보조)을 무작위로 재배정 -->
         <div class="shuffle-wrap">
           <button class="btn btn-shuffle" id="btn-shuffle"

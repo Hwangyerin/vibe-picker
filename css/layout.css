@@ -168,6 +168,24 @@
   gap: var(--space-sm);
 }
 
+/* 보관 최대 초과 경고 텍스트 */
+.keep-warning {
+  font-size: 0.8125rem;   /* 13px */
+  color: var(--color-warning);
+}
+
+/* 보관 버튼 흔들기 애니메이션 */
+@keyframes btn-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-5px); }
+  40%       { transform: translateX(5px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+.btn-keep.shaking {
+  animation: btn-shake 0.35s ease;
+}
+
 /* ---------- 팔레트 히스토리 ---------- */
 .palette-history {
   display: flex;

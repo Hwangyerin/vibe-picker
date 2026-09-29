@@ -71,6 +71,14 @@ document.addEventListener('DOMContentLoaded', () => {
   initDrawer();
   setOnCardLoaded(handleCardLoaded);
 
+  /* 저장 안 된 작업이 있을 때 탭 닫기·새로고침 시 경고 */
+  window.addEventListener('beforeunload', (e) => {
+    if (state.isDirty) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
   console.log('VibePicker 초기화 완료');
 });
 
@@ -83,6 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
  * 후보 색 추출 → 대표색 5개 선택 → 역할 배정 → UI 업데이트
  */
 function handleImageLoaded(img) {
+  /* 읽기 전용 뷰였으면 해제 (서랍에서 불러온 뒤 새 사진 올릴 때) */
+  setReadonlyView(false);
+
   /* 1. 후보 색 10~12개 추출 */
   const candidates = extractColors(img);
   setState({ candidateColors: candidates, myPicks: new Set(), paletteHistory: [] });
@@ -220,12 +231,16 @@ function handleRepick() {
  * - 다시 뽑기해도 히스토리는 유지됨 (시안 비교용)
  * - 이미 보관된 동일 팔레트는 중복 추가하지 않음
  */
+const MAX_HISTORY = 5;
+
 function handleKeep() {
   const { palette, myPicks, paletteHistory, contrastOffset } = state;
   if (!palette.length) return;
 
-  /* 화면에 보이는 팔레트(슬라이더 적용된 색)를 보관
-     → 보관된 카드는 항상 "지금 이 화면의 색"을 저장 */
+  const warningEl = document.getElementById('keep-warning');
+  const btn       = document.getElementById('btn-keep');
+
+  /* 화면에 보이는 팔레트(슬라이더 적용된 색)를 보관 */
   const effectivePalette = contrastOffset !== 0
     ? palette.map((hex) => adjustLightness(hex, contrastOffset))
     : [...palette];
@@ -235,6 +250,19 @@ function handleKeep() {
     (entry) => entry.palette.join() === effectivePalette.join()
   );
   if (isDuplicate) return;
+
+  /* 최대 5개 초과 시 경고 + 버튼 흔들기 */
+  if (paletteHistory.length >= MAX_HISTORY) {
+    warningEl.hidden = false;
+    btn.classList.remove('shaking');
+    void btn.offsetWidth; /* reflow: 애니메이션 재시작을 위해 필요 */
+    btn.classList.add('shaking');
+    btn.addEventListener('animationend', () => btn.classList.remove('shaking'), { once: true });
+    return;
+  }
+
+  /* 저장 성공 시 경고 숨김 */
+  warningEl.hidden = true;
 
   const newHistory = [
     ...paletteHistory,
@@ -293,20 +321,16 @@ function renderPaletteHistory() {
   });
 }
 
-/** 히스토리 카드 클릭 → 해당 팔레트 복원 (현재 팔레트와 교환) */
+/** 히스토리 카드 클릭 → 해당 팔레트를 현재 팔레트로 복원 (히스토리는 유지) */
 function handleHistoryRestore(idx) {
   const entry = state.paletteHistory[idx];
   if (!entry) return;
 
-  /* 현재 팔레트를 그 자리에 교환해 두어 다시 돌아올 수 있게 함 */
-  const newHistory = [...state.paletteHistory];
-  newHistory[idx] = { palette: [...state.palette], myPicks: [...state.myPicks] };
-
   const myPicks = new Set(entry.myPicks);
   const roles = assignRoles(entry.palette);
-  setState({ palette: entry.palette, myPicks, roles, paletteHistory: newHistory, isDirty: true });
+  setState({ palette: entry.palette, myPicks, roles, contrastOffset: 0, isDirty: true });
+  document.getElementById('contrast-slider').value = 0;
   updateUI();
-  renderPaletteHistory();
 }
 
 /** 히스토리 카드 X → 해당 항목 삭제 */
@@ -369,60 +393,59 @@ function handleModeChange(mode) {
   );
 }
 
-/** 서랍에서 카드 불러오기 */
+/**
+ * 서랍에서 카드 불러오기
+ * 이미지는 저장하지 않으므로 팔레트·역할 정보만 복원 (읽기 전용)
+ */
 function handleCardLoaded(card, key) {
-  /* previewImage(800px)가 있으면 사용, 없으면 thumbnail(80px) 폴백 */
-  const imageSrc = card.previewImage || card.thumbnail;
-  if (!imageSrc) return;
+  if (!card.palette?.length) return;
 
-  const img = new Image();
-  img.onload = () => {
-    const offset = card.contrastOffset ?? 0;
+  const offset = card.contrastOffset ?? 0;
 
-    /* 원본 palette와 offset을 기반으로 roles를 재계산해 일관성 유지 */
-    const adjustedPalette = offset !== 0
-      ? card.palette.map((hex) => adjustLightness(hex, offset))
-      : card.palette;
-    const roles = assignRoles(adjustedPalette);
+  /* 원본 palette와 offset을 기반으로 roles를 재계산 */
+  const adjustedPalette = offset !== 0
+    ? card.palette.map((hex) => adjustLightness(hex, offset))
+    : card.palette;
+  const roles = assignRoles(adjustedPalette);
 
-    setState({
-      image: img,
-      thumbnail: card.thumbnail,
-      previewImage: card.previewImage ?? null,
-      palette: card.palette,           /* 원본 보존 */
-      myPicks: new Set(card.myPicks),
-      roles,                           /* 재계산된 roles */
-      contrastOffset: offset,
-      mode: card.mode ?? 'light',
-      loadedCardKey: key,
-      isDirty: false,
-      paletteHistory: [],              /* 다른 사진을 불러오면 히스토리 초기화 */
-    });
+  setState({
+    image:          null,
+    thumbnail:      null,
+    previewImage:   null,
+    palette:        card.palette,
+    myPicks:        new Set(card.myPicks ?? []),
+    roles,
+    contrastOffset: offset,
+    mode:           card.mode ?? 'light',
+    loadedCardKey:  key,
+    isDirty:        false,
+    paletteHistory: [],
+  });
 
-    /* 히스토리 DOM 비우기 */
-    renderPaletteHistory();
+  /* 히스토리 DOM 비우기 */
+  renderPaletteHistory();
 
-    /* 슬라이더 UI 복원 */
-    document.getElementById('contrast-slider').value = offset;
+  /* 라이트·다크 버튼 상태 복원 */
+  const mode = card.mode ?? 'light';
+  document.getElementById('btn-light').classList.toggle('active', mode === 'light');
+  document.getElementById('btn-dark').classList.toggle('active', mode === 'dark');
 
-    /* 라이트·다크 버튼 상태 복원 */
-    const mode = card.mode ?? 'light';
-    document.getElementById('btn-light').classList.toggle('active', mode === 'light');
-    document.getElementById('btn-dark').classList.toggle('active', mode === 'dark');
+  /* 업로드 영역 통째로 숨김, 버튼·도구 영역 숨김 */
+  setReadonlyView(true);
 
-    /* 사진 캔버스 표시 */
-    const placeholder  = document.getElementById('upload-placeholder');
-    const imageDisplay = document.getElementById('image-display');
-    const canvas       = document.getElementById('image-canvas');
-    canvas.width  = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    canvas.getContext('2d').drawImage(img, 0, 0);
-    placeholder.hidden  = true;
-    imageDisplay.hidden = false;
+  updateUI();
+}
 
-    updateUI();
-  };
-  img.src = imageSrc;
+/**
+ * 읽기 전용 뷰 진입 / 해제
+ * - true : 서랍에서 불러온 상태 — 업로드·편집 버튼 모두 숨김
+ * - false: 사진 업로드 후 정상 편집 상태
+ */
+function setReadonlyView(readonly) {
+  document.getElementById('upload-section').hidden  = readonly;
+  document.getElementById('repick-row').hidden      = readonly;
+  document.getElementById('palette-history').hidden = readonly;
+  document.getElementById('tools-controls').hidden  = readonly;
 }
 
 /** 스포이드로 색 선택됐을 때 */
@@ -488,6 +511,9 @@ function handleHomeClick() {
     paletteHistory: [],
   });
 
+  /* 읽기 전용 뷰 해제 */
+  setReadonlyView(false);
+
   /* UI 초기화 */
   document.getElementById('upload-placeholder').hidden = false;
   document.getElementById('image-display').hidden      = true;
@@ -501,9 +527,10 @@ function handleHomeClick() {
   document.getElementById('btn-light').classList.add('active');
   document.getElementById('btn-dark').classList.remove('active');
 
-  /* 히스토리 카드 DOM 비우기 */
+  /* 히스토리 카드 DOM 비우기 + 보관 경고 숨김 */
   const historyEl = document.getElementById('palette-history');
   if (historyEl) historyEl.innerHTML = '';
+  document.getElementById('keep-warning').hidden = true;
 
   /* 진행 중이던 스포이드 모드 해제 */
   deactivateEyedropper();
