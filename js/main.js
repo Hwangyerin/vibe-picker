@@ -41,6 +41,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-repick')
     .addEventListener('click', handleRepick);
 
+  /* 보관 버튼: 현재 팔레트를 히스토리에 담음 */
+  document.getElementById('btn-keep')
+    .addEventListener('click', handleKeep);
+
   /* 랜덤 섞기 버튼 */
   document.getElementById('btn-shuffle')
     .addEventListener('click', handleShuffle);
@@ -48,6 +52,10 @@ document.addEventListener('DOMContentLoaded', () => {
   /* 대비 슬라이더 */
   document.getElementById('contrast-slider')
     .addEventListener('input', handleContrastSlider);
+
+  /* 대비 초기화 버튼 */
+  document.getElementById('btn-contrast-reset')
+    .addEventListener('click', handleContrastReset);
 
   /* 라이트·다크 전환 버튼 */
   document.getElementById('btn-light')
@@ -77,7 +85,10 @@ document.addEventListener('DOMContentLoaded', () => {
 function handleImageLoaded(img) {
   /* 1. 후보 색 10~12개 추출 */
   const candidates = extractColors(img);
-  setState({ candidateColors: candidates, myPicks: new Set() });
+  setState({ candidateColors: candidates, myPicks: new Set(), paletteHistory: [] });
+
+  /* 히스토리 DOM 비우기 (다른 사진으로 넘어갈 때 이전 히스토리 사라짐) */
+  renderPaletteHistory();
 
   /* 2. 후보 중 서로 멀리 떨어진 5개 선택 */
   const palette = pickDistinct(candidates, new Set(), 5);
@@ -204,12 +215,127 @@ function handleRepick() {
   updateUI();
 }
 
+/**
+ * 보관 버튼: 현재 팔레트를 히스토리에 추가
+ * - 다시 뽑기해도 히스토리는 유지됨 (시안 비교용)
+ * - 이미 보관된 동일 팔레트는 중복 추가하지 않음
+ */
+function handleKeep() {
+  const { palette, myPicks, paletteHistory, contrastOffset } = state;
+  if (!palette.length) return;
+
+  /* 화면에 보이는 팔레트(슬라이더 적용된 색)를 보관
+     → 보관된 카드는 항상 "지금 이 화면의 색"을 저장 */
+  const effectivePalette = contrastOffset !== 0
+    ? palette.map((hex) => adjustLightness(hex, contrastOffset))
+    : [...palette];
+
+  /* 이미 같은 팔레트가 보관되어 있으면 무시 */
+  const isDuplicate = paletteHistory.some(
+    (entry) => entry.palette.join() === effectivePalette.join()
+  );
+  if (isDuplicate) return;
+
+  const newHistory = [
+    ...paletteHistory,
+    { palette: effectivePalette, myPicks: [...myPicks] },
+  ];
+  setState({ paletteHistory: newHistory });
+  renderPaletteHistory();
+}
+
+/**
+ * 히스토리 카드 렌더링
+ * — 보관된 팔레트들을 5색 직사각형 카드로 표시
+ */
+function renderPaletteHistory() {
+  const container = document.getElementById('palette-history');
+  if (!container) return;
+  container.innerHTML = '';
+
+  state.paletteHistory.forEach((entry, idx) => {
+    const card = document.createElement('div');
+    card.className = 'history-card';
+    card.title = '클릭하면 이 팔레트로 복원';
+
+    /* 내부 래퍼: border-radius + overflow:hidden 을 여기서만 처리해
+       X 버튼이 카드 바깥으로 걸칠 수 있게 함 */
+    const inner = document.createElement('div');
+    inner.className = 'history-card-inner';
+
+    /* 5색 블록 (패딩 없이 가로로 꽉 채움) */
+    const colors = document.createElement('div');
+    colors.className = 'history-card-colors';
+    entry.palette.forEach((hex) => {
+      const block = document.createElement('div');
+      block.className = 'history-color-block';
+      block.style.backgroundColor = hex;
+      colors.appendChild(block);
+    });
+    inner.appendChild(colors);
+    card.appendChild(inner);
+
+    /* X 버튼: 호버 시 우측 상단 표시, 클릭 시 삭제 */
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'history-card-remove';
+    removeBtn.textContent = '✕';
+    removeBtn.title = '보관 목록에서 삭제';
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleHistoryRemove(idx);
+    });
+    card.appendChild(removeBtn);
+
+    /* 카드 클릭 → 해당 팔레트를 현재 작업 화면으로 복원 */
+    card.addEventListener('click', () => handleHistoryRestore(idx));
+
+    container.appendChild(card);
+  });
+}
+
+/** 히스토리 카드 클릭 → 해당 팔레트 복원 (현재 팔레트와 교환) */
+function handleHistoryRestore(idx) {
+  const entry = state.paletteHistory[idx];
+  if (!entry) return;
+
+  /* 현재 팔레트를 그 자리에 교환해 두어 다시 돌아올 수 있게 함 */
+  const newHistory = [...state.paletteHistory];
+  newHistory[idx] = { palette: [...state.palette], myPicks: [...state.myPicks] };
+
+  const myPicks = new Set(entry.myPicks);
+  const roles = assignRoles(entry.palette);
+  setState({ palette: entry.palette, myPicks, roles, paletteHistory: newHistory, isDirty: true });
+  updateUI();
+  renderPaletteHistory();
+}
+
+/** 히스토리 카드 X → 해당 항목 삭제 */
+function handleHistoryRemove(idx) {
+  const newHistory = state.paletteHistory.filter((_, i) => i !== idx);
+  setState({ paletteHistory: newHistory });
+  renderPaletteHistory();
+}
+
 /** 랜덤 섞기: 5색 안에서 역할 무작위 재배정 */
 function handleShuffle() {
   const { palette } = state;
   const roles = shuffleRoles(palette);
   setState({ roles, isDirty: true });
   updateUI();
+}
+
+/** 대비 초기화: 슬라이더를 0으로 되돌리고 원본 팔레트 색으로 복원 */
+function handleContrastReset() {
+  const slider = document.getElementById('contrast-slider');
+  slider.value = 0;
+  setState({ contrastOffset: 0, isDirty: true });
+
+  const roles = assignRoles(state.palette);
+  setState({ roles });
+  renderChips(state.palette, state.myPicks);
+  renderMockups(roles, state.mode);
+  renderRolesBadges(roles);
+  updateWarning(roles.text, roles.bg);
 }
 
 /** 대비 슬라이더: 색조 유지하며 명도 대비 조절 */
@@ -245,7 +371,9 @@ function handleModeChange(mode) {
 
 /** 서랍에서 카드 불러오기 */
 function handleCardLoaded(card, key) {
-  if (!card.thumbnail) return;
+  /* previewImage(800px)가 있으면 사용, 없으면 thumbnail(80px) 폴백 */
+  const imageSrc = card.previewImage || card.thumbnail;
+  if (!imageSrc) return;
 
   const img = new Image();
   img.onload = () => {
@@ -260,6 +388,7 @@ function handleCardLoaded(card, key) {
     setState({
       image: img,
       thumbnail: card.thumbnail,
+      previewImage: card.previewImage ?? null,
       palette: card.palette,           /* 원본 보존 */
       myPicks: new Set(card.myPicks),
       roles,                           /* 재계산된 roles */
@@ -267,7 +396,11 @@ function handleCardLoaded(card, key) {
       mode: card.mode ?? 'light',
       loadedCardKey: key,
       isDirty: false,
+      paletteHistory: [],              /* 다른 사진을 불러오면 히스토리 초기화 */
     });
+
+    /* 히스토리 DOM 비우기 */
+    renderPaletteHistory();
 
     /* 슬라이더 UI 복원 */
     document.getElementById('contrast-slider').value = offset;
@@ -289,7 +422,7 @@ function handleCardLoaded(card, key) {
 
     updateUI();
   };
-  img.src = card.thumbnail;
+  img.src = imageSrc;
 }
 
 /** 스포이드로 색 선택됐을 때 */
@@ -367,6 +500,10 @@ function handleHomeClick() {
   document.getElementById('contrast-slider').value = 0;
   document.getElementById('btn-light').classList.add('active');
   document.getElementById('btn-dark').classList.remove('active');
+
+  /* 히스토리 카드 DOM 비우기 */
+  const historyEl = document.getElementById('palette-history');
+  if (historyEl) historyEl.innerHTML = '';
 
   /* 진행 중이던 스포이드 모드 해제 */
   deactivateEyedropper();

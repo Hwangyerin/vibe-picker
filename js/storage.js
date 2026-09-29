@@ -28,7 +28,7 @@ export function initSaveButton() {
  * 현재 작업 상태를 카드로 저장
  */
 function saveCurrentCard() {
-  const { palette, myPicks, roles, contrastOffset, mode, thumbnail, loadedCardKey } = state;
+  const { palette, myPicks, roles, contrastOffset, mode, thumbnail, previewImage, loadedCardKey } = state;
 
   if (!palette.length || !roles) return;
 
@@ -49,6 +49,7 @@ function saveCurrentCard() {
     contrastOffset,
     mode,
     thumbnail,
+    previewImage,   /* 800px 대형 — 서랍에서 불러올 때 캔버스 표시용 */
     savedAt: Date.now(),
   };
 

@@ -93,9 +93,10 @@ function loadSrc(src) {
     /* 사진 표시 영역 전환 */
     showImageDisplay(img);
 
-    /* 썸네일 생성 후 상태에 저장 */
-    const thumbnail = makeThumbnail(img);
-    setState({ thumbnail });
+    /* 썸네일(80px) + 프리뷰(800px) 생성 후 상태에 저장 */
+    const thumbnail    = makeThumbnail(img);
+    const previewImage = makePreviewImage(img);
+    setState({ thumbnail, previewImage });
 
     /* 색 추출 등 후속 작업을 main.js가 처리 */
     onImageLoaded?.(img);
@@ -133,14 +134,14 @@ function showImageDisplay(img) {
 }
 
 /**
- * 이미지를 작은 썸네일(base64)로 변환 (서랍 저장용)
+ * 이미지를 작은 썸네일(base64)로 변환 (서랍 카드 미리보기용 — 80px 소형)
  * @param {HTMLImageElement} img
  * @param {number} maxW - 최대 너비 (기본 80px)
  * @returns {string} base64 data URL
  */
 function makeThumbnail(img, maxW = 80) {
-  const scale  = maxW / img.naturalWidth;
-  const w = maxW;
+  const scale  = Math.min(1, maxW / img.naturalWidth);
+  const w = Math.round(img.naturalWidth  * scale);
   const h = Math.round(img.naturalHeight * scale);
 
   const canvas = document.createElement('canvas');
@@ -148,4 +149,22 @@ function makeThumbnail(img, maxW = 80) {
   canvas.height = h;
   canvas.getContext('2d').drawImage(img, 0, 0, w, h);
   return canvas.toDataURL('image/jpeg', 0.7);
+}
+
+/**
+ * 이미지를 큰 프리뷰(base64)로 변환 (서랍에서 불러올 때 캔버스 표시용 — 800px 대형)
+ * @param {HTMLImageElement} img
+ * @param {number} maxW - 최대 너비 (기본 800px)
+ * @returns {string} base64 data URL
+ */
+function makePreviewImage(img, maxW = 800) {
+  const scale  = Math.min(1, maxW / img.naturalWidth);
+  const w = Math.round(img.naturalWidth  * scale);
+  const h = Math.round(img.naturalHeight * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width  = w;
+  canvas.height = h;
+  canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+  return canvas.toDataURL('image/jpeg', 0.92);
 }

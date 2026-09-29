@@ -12,8 +12,11 @@ const state = {
   /* 현재 올라온 이미지 (HTMLImageElement) */
   image: null,
 
-  /* 사진 썸네일 (base64 문자열, 서랍 저장용) */
+  /* 사진 썸네일 (base64, 서랍 카드 미리보기용 — 80px 소형) */
   thumbnail: null,
+
+  /* 사진 프리뷰 (base64, 서랍에서 불러올 때 캔버스 표시용 — 800px 대형) */
+  previewImage: null,
 
   /* 후보 색 10~12개 (k-means 결과, HEX 문자열 배열) */
   candidateColors: [],
@@ -39,6 +42,9 @@ const state = {
 
   /* 저장되지 않은 변경이 있는지 여부 (저장 버튼 활성화 조건) */
   isDirty: false,
+
+  /* 팔레트 히스토리: 사용자가 "보관" 버튼으로 담은 팔레트들 (세션 한정, localStorage 아님) */
+  paletteHistory: [], /* [{ palette: string[], myPicks: number[] }, ...] */
 };
 
 /**
