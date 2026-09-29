@@ -14,7 +14,8 @@ import { renderChips, initEyedropperOverlay,
 import { renderMockups, applyMode }                from './mockups.js';
 import { initPrompt, showPromptSection }           from './prompt.js';
 import { initSaveButton, initDrawer,
-         setOnCardLoaded, onStateChange }          from './storage.js';
+         setOnCardLoaded, onStateChange,
+         renderHomePalettes }                      from './storage.js';
 
 /* ==========================================================
    초기화
@@ -71,6 +72,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initDrawer();
   setOnCardLoaded(handleCardLoaded);
 
+  /* 홈 화면 저장된 팔레트 목록 초기 렌더 */
+  renderHomePalettes();
+
   /* 저장 안 된 작업이 있을 때 탭 닫기·새로고침 시 경고 */
   window.addEventListener('beforeunload', (e) => {
     if (state.isDirty) {
@@ -93,6 +97,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function handleImageLoaded(img) {
   /* 읽기 전용 뷰였으면 해제 (서랍에서 불러온 뒤 새 사진 올릴 때) */
   setReadonlyView(false);
+
+  /* 사진 업로드 화면에서만 보이는 저장 팔레트 목록 숨김 */
+  document.getElementById('home-palettes-section').hidden = true;
 
   /* 1. 후보 색 10~12개 추출 */
   const candidates = extractColors(img);
@@ -430,7 +437,8 @@ function handleCardLoaded(card, key) {
   document.getElementById('btn-light').classList.toggle('active', mode === 'light');
   document.getElementById('btn-dark').classList.toggle('active', mode === 'dark');
 
-  /* 업로드 영역 통째로 숨김, 버튼·도구 영역 숨김 */
+  /* 업로드 영역 통째로 숨김, 버튼·도구 영역 숨김, 저장 팔레트 목록 숨김 */
+  document.getElementById('home-palettes-section').hidden = true;
   setReadonlyView(true);
 
   updateUI();
@@ -531,6 +539,9 @@ function handleHomeClick() {
   const historyEl = document.getElementById('palette-history');
   if (historyEl) historyEl.innerHTML = '';
   document.getElementById('keep-warning').hidden = true;
+
+  /* 홈 화면 팔레트 목록 갱신 */
+  renderHomePalettes();
 
   /* 진행 중이던 스포이드 모드 해제 */
   deactivateEyedropper();

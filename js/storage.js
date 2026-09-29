@@ -71,6 +71,9 @@ function saveCurrentCard() {
   if (!document.getElementById('drawer-panel').hidden) {
     renderDrawerList();
   }
+
+  /* 홈 화면 팔레트 목록 갱신 */
+  renderHomePalettes();
 }
 
 /* =========================================================
@@ -133,28 +136,51 @@ function renderDrawerList() {
 }
 
 /**
+ * 역할 비중에 따라 가로 색 바 DOM을 만들어 반환
+ * roles가 있으면 비중 적용, 없으면 균등 분할
+ * @param {object} card
+ * @param {string} barClass - 바 wrapper에 붙일 클래스
+ * @param {string} blockClass - 각 블록에 붙일 클래스
+ */
+function buildColorBar(card, barClass, blockClass) {
+  const bar = document.createElement('div');
+  bar.className = barClass;
+
+  /* 역할 순서와 비중 (배경이 가장 넓고, 글자가 가장 좁음) */
+  const roleWeights = [
+    { key: 'bg',    flex: 4   },
+    { key: 'main',  flex: 3   },
+    { key: 'point', flex: 2   },
+    { key: 'sub',   flex: 1.5 },
+    { key: 'text',  flex: 1   },
+  ];
+
+  /* 팔레트 순서대로, 비중만 roleWeights 순서로 적용 */
+  card.palette.forEach((hex, i) => {
+    const flex = roleWeights[i]?.flex ?? 1;
+    const block = document.createElement('div');
+    block.className = blockClass;
+    block.style.backgroundColor = hex;
+    block.style.flex = String(flex);
+    /* 홈 카드에만 stagger 딜레이: 왼쪽 → 오른쪽 순서로 촤라락 */
+    if (blockClass === 'home-palette-block') {
+      block.style.animationDelay = `${i * 110}ms`;
+    }
+    bar.appendChild(block);
+  });
+
+  return bar;
+}
+
+/**
  * 팔레트 카드 DOM 요소 생성
  */
 function buildCardEl(key, card) {
   const el = document.createElement('div');
   el.className = 'palette-card';
 
-  /* 5색 가로 바 */
-  const bar = document.createElement('div');
-  bar.className = 'card-color-bar';
-  card.palette.forEach((hex) => {
-    const block = document.createElement('div');
-    block.className = 'card-bar-block';
-    block.style.backgroundColor = hex;
-    bar.appendChild(block);
-  });
-
-  /* 저장 날짜 */
-  const meta = document.createElement('span');
-  meta.className = 'card-meta';
-  meta.textContent = new Date(card.savedAt).toLocaleDateString('ko-KR', {
-    month: 'numeric', day: 'numeric',
-  });
+  /* 역할 비중 가로 바 */
+  const bar = buildColorBar(card, 'card-color-bar', 'card-bar-block');
 
   /* 삭제 버튼 */
   const btnDel = document.createElement('button');
@@ -174,10 +200,57 @@ function buildCardEl(key, card) {
   });
 
   el.appendChild(bar);
-  el.appendChild(meta);
   el.appendChild(btnDel);
 
   return el;
+}
+
+/* =========================================================
+   홈 화면 저장된 팔레트 목록
+   ========================================================= */
+
+/**
+ * 홈 화면에 저장된 팔레트 카드 목록을 렌더링
+ * 저장된 카드가 없으면 섹션 자체를 숨김
+ */
+export function renderHomePalettes() {
+  const section = document.getElementById('home-palettes-section');
+  const grid    = document.getElementById('home-palettes-grid');
+  if (!section || !grid) return;
+
+  const index = loadIndex();
+  if (index.length === 0) {
+    section.hidden = true;
+    return;
+  }
+
+  /* 업로드 화면(placeholder가 보일 때)에서만 표시 */
+  const onHomScreen = !document.getElementById('upload-placeholder').hidden;
+  if (!onHomScreen) return;
+
+  section.hidden = false;
+  grid.innerHTML = '';
+
+  [...index].reverse().forEach((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) return;
+    const card = JSON.parse(raw);
+
+    const el = document.createElement('button');
+    el.className = 'home-palette-card';
+    el.title = '이 팔레트 불러오기';
+
+    /* 역할 비중 가로 바 */
+    const bar = buildColorBar(card, 'home-palette-bar', 'home-palette-block');
+
+    el.appendChild(bar);
+
+    el.addEventListener('click', () => {
+      loadCard(key, card);
+    });
+
+    grid.appendChild(el);
+  });
 }
 
 /* =========================================================
@@ -214,6 +287,9 @@ function deleteCard(key) {
   if (state.loadedCardKey === key) {
     setState({ loadedCardKey: null });
   }
+
+  /* 홈 화면 팔레트 목록 갱신 */
+  renderHomePalettes();
 }
 
 /* =========================================================

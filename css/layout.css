@@ -56,6 +56,70 @@
   width: 100%;
 }
 
+/* ---------- 홈 화면 저장된 팔레트 ---------- */
+.home-palettes-section {
+  width: 100%;
+}
+
+.home-palettes-title {
+  font-size: 0.8125rem;   /* 13px */
+  font-weight: 600;
+  color: var(--color-muted);
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-md);
+}
+
+.home-palettes-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+}
+
+/* 홈 화면 팔레트 카드 — 색 바 자체가 버튼 */
+.home-palette-card {
+  display: flex;
+  height: 48px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.home-palette-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 역할 비중 가로 바 */
+.home-palette-bar {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+/* flex 비율과 animation-delay는 JS(buildColorBar)에서 style로 직접 지정 */
+.home-palette-block {
+  min-width: 0;
+  transform-origin: left center;
+  animation: palette-reveal 0.5s ease-out both;
+}
+
+@keyframes palette-reveal {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+/* 카드 배경을 흰색으로 — 블록이 투명할 때 흰색이 비쳐 디졸브 효과 */
+.home-palette-card {
+  background-color: #fff;
+}
+
 /* 사진이 없을 때: 업로드 안내 박스 */
 .upload-placeholder {
   display: flex;

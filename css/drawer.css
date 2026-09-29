@@ -78,38 +78,29 @@
 
 /* ---------- 팔레트 카드 ---------- */
 .palette-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast);
-  background-color: var(--color-white);
   position: relative;
+  height: 44px;
+  border-radius: var(--radius-md);
+  overflow: visible; /* X 버튼이 걸칠 수 있게 */
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 .palette-card:hover {
-  background-color: var(--color-surface);
-  border-color: var(--color-text);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* 5색 가로 바 */
+/* 역할 비중 가로 바 — 카드 자체를 꽉 채움 */
 .card-color-bar {
   display: flex;
-  height: 28px;
-  border-radius: var(--radius-sm);
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-md);
   overflow: hidden;
-  border: 1px solid var(--color-border);
 }
+/* flex 비율은 JS(buildColorBar)에서 style.flex로 직접 지정 */
 .card-bar-block {
-  flex: 1;
-}
-
-/* 저장 날짜 */
-.card-meta {
-  font-size: 0.75rem;
-  color: var(--color-muted);
+  min-width: 0;
 }
 
 /* 삭제 버튼 */
