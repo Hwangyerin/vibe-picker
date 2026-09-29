@@ -1,0 +1,150 @@
+/* ==========================================================
+   drawer.css — 서랍 패널 스타일
+   저장된 팔레트 카드 목록
+   ========================================================== */
+
+/* ---------- 배경 딤 ---------- */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  z-index: 200;
+  /* 클릭하면 서랍 닫힘 (storage.js에서 처리) */
+}
+
+/* ---------- 서랍 패널 ---------- */
+.drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 320px;
+  background-color: var(--color-white);
+  border-left: 1px solid var(--color-border);
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.drawer-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.btn-drawer-close {
+  color: var(--color-muted);
+  font-size: 1rem;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+.btn-drawer-close:hover {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+/* ---------- 서랍 목록 ---------- */
+.drawer-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* 저장된 카드가 없을 때 안내 */
+.drawer-empty {
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  padding: var(--space-xl) 0;
+}
+
+/* ---------- 팔레트 카드 ---------- */
+.palette-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  background-color: var(--color-white);
+}
+.palette-card:hover {
+  background-color: var(--color-surface);
+  border-color: var(--color-text);
+}
+
+/* 저장된 사진 썸네일 */
+.card-thumb {
+  width: 48px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: var(--color-surface);
+}
+.card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 팔레트 5색 미니 스와치 */
+.card-colors {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+}
+.card-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.08);
+  flex-shrink: 0;
+}
+
+/* 삭제 버튼 */
+.btn-card-delete {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+.btn-card-delete:hover {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+/* ---------- 서랍 가득 찬 경고 ---------- */
+.drawer-full-notice {
+  text-align: center;
+  color: var(--color-warning);
+  font-size: 0.8125rem;
+  padding: var(--space-sm) 0;
+}

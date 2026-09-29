@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VibePicker</title>
+
+  <!-- Pretendard 폰트: 예시 화면과 AI 프롬프트에 같은 폰트를 씀 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+
+  <!-- 공통 변수·리셋 -->
+  <link rel="stylesheet" href="css/base.css" />
+  <!-- 전체 레이아웃 배치 -->
+  <link rel="stylesheet" href="css/layout.css" />
+  <!-- 컬러칩 스타일 -->
+  <link rel="stylesheet" href="css/chips.css" />
+  <!-- 예시 화면(목업) 스타일 -->
+  <link rel="stylesheet" href="css/mockups.css" />
+  <!-- 서랍 패널 스타일 -->
+  <link rel="stylesheet" href="css/drawer.css" />
+</head>
+<body>
+
+  <!-- ===== 헤더: 앱 이름 + 우측 버튼들 ===== -->
+  <header class="app-header">
+    <h1 class="app-title">VibePicker</h1>
+    <div class="header-actions">
+      <!-- 저장 버튼: 변경이 있을 때만 활성화됨 (2단계 이후 로직 연결) -->
+      <button class="btn btn-save" id="btn-save" disabled>저장</button>
+      <!-- 서랍 버튼: 저장된 팔레트 카드 목록 열기 -->
+      <button class="btn btn-drawer" id="btn-drawer">서랍</button>
+    </div>
+  </header>
+
+  <!-- ===== 메인 콘텐츠 ===== -->
+  <main class="app-main">
+
+    <!-- 1. 사진 올리기 + 사진 표시 영역 -->
+    <section class="upload-section" id="upload-section">
+      <!-- 사진이 없을 때 보이는 업로드 안내 -->
+      <div class="upload-placeholder" id="upload-placeholder">
+        <p class="upload-hint">사진을 끌어다 놓거나 파일을 선택하세요</p>
+        <button class="btn btn-file" id="btn-file">파일 선택</button>
+        <input type="file" id="file-input" accept="image/*" hidden />
+
+        <!-- 샘플 사진 3장: 누르면 바로 체험 가능 -->
+        <div class="sample-list" id="sample-list">
+          <p class="sample-label">샘플로 바로 체험해보기</p>
+          <div class="sample-thumbs">
+            <button class="sample-thumb" data-index="0" aria-label="샘플 사진 1">
+              <img src="samples/sample1.jpg" alt="샘플 1" />
+            </button>
+            <button class="sample-thumb" data-index="1" aria-label="샘플 사진 2">
+              <img src="samples/sample2.jpg" alt="샘플 2" />
+            </button>
+            <button class="sample-thumb" data-index="2" aria-label="샘플 사진 3">
+              <img src="samples/sample3.jpg" alt="샘플 3" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 사진이 올라온 뒤 보이는 영역 (처음엔 숨김) -->
+      <div class="image-display" id="image-display" hidden>
+        <canvas id="image-canvas" aria-label="업로드된 사진"></canvas>
+        <!-- 스포이드 모드일 때 사진 위에 덮이는 투명 레이어 -->
+        <div class="eyedropper-overlay" id="eyedropper-overlay" hidden></div>
+      </div>
+    </section>
+
+    <!-- 2. 컬러칩 5개 + 다시 뽑기 버튼 -->
+    <section class="chips-section" id="chips-section" hidden>
+      <div class="chips-row" id="chips-row">
+        <!-- 컬러칩은 chips.js가 동적으로 채움 -->
+      </div>
+      <button class="btn btn-repick" id="btn-repick">다시 뽑기</button>
+    </section>
+
+    <!-- 3. 색 역할 배정 정보 + 조작 버튼들 -->
+    <section class="tools-section" id="tools-section" hidden>
+      <!-- 역할별 색 배지 (roles.js가 채움) -->
+      <div class="roles-display" id="roles-display"></div>
+
+      <div class="tools-controls">
+        <!-- 랜덤 섞기: 5색 안에서 역할을 무작위로 다시 배정 -->
+        <button class="btn btn-shuffle" id="btn-shuffle">랜덤 섞기</button>
+
+        <!-- 대비 슬라이더: 팔레트의 명도 대비 조절 -->
+        <label class="slider-label" for="contrast-slider">
+          대비
+          <input type="range" id="contrast-slider" min="-50" max="50" value="0" />
+        </label>
+
+        <!-- 가독성 경고: 글자-배경 대비 부족할 때만 표시 -->
+        <div class="readability-warning" id="readability-warning" hidden>
+          <span class="warning-icon">⚠</span>
+          <span class="warning-text" id="warning-text">가독성 주의</span>
+        </div>
+
+        <!-- 라이트·다크 전환 버튼 -->
+        <div class="mode-toggle" role="group" aria-label="라이트/다크 모드">
+          <button class="btn btn-mode active" data-mode="light" id="btn-light">라이트</button>
+          <button class="btn btn-mode" data-mode="dark" id="btn-dark">다크</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 예시 화면 3종 (슬라이드, 웹, 앱) -->
+    <section class="mockups-section" id="mockups-section" hidden>
+      <h2 class="section-title">예시 화면</h2>
+
+      <!-- 발표 슬라이드: 표지 + 본문 -->
+      <div class="mockup-group">
+        <h3 class="mockup-group-title">슬라이드</h3>
+        <div class="mockup-row">
+          <div class="mockup-card mockup-slide-cover" id="mockup-slide-cover">
+            <!-- mockups.js가 내용 채움 -->
+          </div>
+          <div class="mockup-card mockup-slide-body" id="mockup-slide-body">
+            <!-- mockups.js가 내용 채움 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 웹사이트 랜딩 페이지 -->
+      <div class="mockup-group">
+        <h3 class="mockup-group-title">웹사이트</h3>
+        <div class="mockup-card mockup-web" id="mockup-web">
+          <!-- mockups.js가 내용 채움 -->
+        </div>
+      </div>
+
+      <!-- 모바일 앱 화면 -->
+      <div class="mockup-group">
+        <h3 class="mockup-group-title">앱</h3>
+        <div class="mockup-card mockup-app" id="mockup-app">
+          <!-- mockups.js가 내용 채움 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. AI 프롬프트 복사 -->
+    <section class="prompt-section" id="prompt-section" hidden>
+      <button class="btn btn-copy-prompt" id="btn-copy-prompt">AI 프롬프트 복사</button>
+      <span class="copied-badge" id="prompt-copied" hidden>복사됨</span>
+    </section>
+
+  </main>
+
+  <!-- ===== 서랍 패널: 저장된 팔레트 카드 목록 ===== -->
+  <!-- 서랍 버튼을 누르면 열리고, 배경을 누르면 닫힘 -->
+  <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+  <aside class="drawer-panel" id="drawer-panel" aria-label="저장된 팔레트 서랍" hidden>
+    <div class="drawer-header">
+      <h2 class="drawer-title">서랍</h2>
+      <button class="btn btn-drawer-close" id="btn-drawer-close" aria-label="서랍 닫기">✕</button>
+    </div>
+    <div class="drawer-list" id="drawer-list">
+      <!-- storage.js가 카드 목록을 동적으로 채움 -->
+      <p class="drawer-empty">저장된 팔레트가 없어요.</p>
+    </div>
+  </aside>
+
+  <!-- ===== JavaScript 진입점 ===== -->
+  <!-- type="module"을 써야 import/export가 동작함 -->
+  <!-- 로컬에서는 Live Server로, 배포 후에는 GitHub Pages 링크로 열 것 -->
+  <script type="module" src="js/main.js"></script>
+
+</body>
+</html>

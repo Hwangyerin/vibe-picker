@@ -1,0 +1,247 @@
+/* ==========================================================
+   layout.css — 전체 페이지 배치
+   헤더, 사진 영역, 컬러칩 영역, 목업 영역, 프롬프트 영역
+   ========================================================== */
+
+/* ---------- 헤더 ---------- */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-xl);
+  background-color: var(--color-white);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-title {
+  font-size: 1.125rem;     /* 18px */
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+/* ---------- 메인 콘텐츠 ---------- */
+.app-main {
+  /* 최대 너비를 두어 너무 넓어지지 않게 */
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+/* ---------- 사진 업로드 섹션 ---------- */
+.upload-section {
+  width: 100%;
+}
+
+/* 사진이 없을 때: 업로드 안내 박스 */
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-xl) var(--space-lg);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  text-align: center;
+  /* 드래그 중일 때 강조 (upload.js에서 클래스로 제어) */
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+/* 드래그 오버 상태 */
+.upload-placeholder.drag-over {
+  border-color: var(--color-text);
+  background-color: var(--color-border);
+}
+
+.upload-hint {
+  font-size: 0.9375rem;    /* 15px */
+  color: var(--color-text-sub);
+}
+
+/* 샘플 썸네일 영역 */
+.sample-list {
+  width: 100%;
+}
+
+.sample-label {
+  font-size: 0.8125rem;    /* 13px */
+  color: var(--color-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.sample-thumbs {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-md);
+}
+
+.sample-thumb {
+  width: 120px;
+  height: 80px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+  padding: 0;
+}
+.sample-thumb:hover {
+  border-color: var(--color-text);
+  transform: translateY(-2px);
+}
+.sample-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 사진이 올라온 뒤 보이는 캔버스 영역 */
+.image-display {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+#image-canvas {
+  max-width: 100%;
+  max-height: 480px;
+  border-radius: var(--radius-md);
+  display: block;
+  /* 스포이드 모드에서 커서 변경은 JS에서 처리 */
+}
+
+/* 스포이드 모드 오버레이: 클릭 영역 확보 */
+.eyedropper-overlay {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  border-radius: var(--radius-md);
+}
+
+/* ---------- 컬러칩 섹션 ---------- */
+.chips-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-md);
+}
+
+.chips-row {
+  display: flex;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+/* ---------- 도구 섹션 (역할 배정 + 조작 버튼들) ---------- */
+.tools-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.roles-display {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.tools-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+/* 대비 슬라이더 */
+.slider-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 0.875rem;     /* 14px */
+  color: var(--color-text-sub);
+}
+.slider-label input[type="range"] {
+  width: 140px;
+  cursor: pointer;
+  accent-color: var(--color-text);
+}
+
+/* 가독성 경고 */
+.readability-warning {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--color-warning);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* 라이트·다크 전환 버튼 그룹 */
+.mode-toggle {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.mode-toggle .btn-mode {
+  border: none;
+  border-radius: 0;
+  padding: var(--space-xs) var(--space-md);
+}
+.mode-toggle .btn-mode.active {
+  background-color: var(--color-accent);
+  color: var(--color-accent-fg);
+}
+
+/* ---------- 예시 화면(목업) 섹션 ---------- */
+.mockups-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.mockup-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.mockup-group-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  letter-spacing: 0.04em;
+}
+
+/* 슬라이드는 가로로 나란히 */
+.mockup-row {
+  display: flex;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+/* 목업 카드 공통 */
+.mockup-card {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  /* 색은 mockups.js가 CSS 변수로 주입 */
+}
+
+/* ---------- AI 프롬프트 섹션 ---------- */
+.prompt-section {
+  display: flex;
+  align-items: center;
+  padding-bottom: var(--space-xl);
+}

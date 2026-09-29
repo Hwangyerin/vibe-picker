@@ -1,0 +1,112 @@
+/* ==========================================================
+   chips.css — 컬러칩 스타일
+   참고: docs/reference-colorchip.png
+   구조: 동그란 색 칩 / HEX 코드 / RGB 코드, 줄 사이 구분선
+   ========================================================== */
+
+/* 칩 하나를 감싸는 컨테이너 */
+.color-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background-color: var(--color-white);
+  /* 스포이드 모드에서 선택된 칩 강조 효과를 위한 전환 */
+  transition: box-shadow var(--transition-fast);
+  cursor: default;
+}
+
+/* 스포이드 모드에서 마우스를 올리면 선택 가능하다는 표시 */
+.color-chip.eyedropper-mode {
+  cursor: pointer;
+}
+.color-chip.eyedropper-mode:hover {
+  box-shadow: 0 0 0 2px var(--color-text);
+}
+
+/* 스포이드로 선택된(활성) 칩 */
+.color-chip.selected {
+  box-shadow: 0 0 0 2px var(--color-text);
+}
+
+/* ---------- 동그란 색 원 ---------- */
+.chip-swatch-row {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-md) var(--space-sm) var(--space-sm);
+  /* 세 영역 사이 구분선을 border-top으로 구현 */
+}
+
+.chip-swatch {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  /* 배경색은 JS에서 style.backgroundColor로 주입 */
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+/* my pick 뱃지 */
+.chip-mypick {
+  margin-top: var(--space-xs);
+  font-size: 0.625rem;     /* 10px */
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text-sub);
+  text-transform: uppercase;
+}
+
+/* ---------- HEX 코드 줄 ---------- */
+.chip-hex-row {
+  width: 100%;
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-sm);
+  text-align: center;
+}
+
+.chip-hex {
+  font-size: 0.75rem;      /* 12px */
+  font-weight: 500;
+  color: var(--color-text);
+  letter-spacing: 0.02em;
+  /* 복사 가능 표시 */
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+  transition: background-color var(--transition-fast);
+}
+.chip-hex:hover {
+  background-color: var(--color-surface);
+}
+
+/* ---------- RGB 코드 줄 ---------- */
+.chip-rgb-row {
+  width: 100%;
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-sm);
+  text-align: center;
+}
+
+.chip-rgb {
+  font-size: 0.6875rem;    /* 11px */
+  color: var(--color-text-sub);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+  transition: background-color var(--transition-fast);
+}
+.chip-rgb:hover {
+  background-color: var(--color-surface);
+}
+
+/* ---------- 복사됨 뱃지 (칩 내부) ---------- */
+.chip-copied {
+  font-size: 0.625rem;
+  color: var(--color-muted);
+  animation: fadeInOut 1.5s ease forwards;
+}
