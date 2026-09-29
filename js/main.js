@@ -175,19 +175,24 @@ function updateWarning(textHex, bgHex) {
    버튼 핸들러
    ========================================================== */
 
-/** 다시 뽑기: 후보 중 다른 5색 선택 (my pick 칩 유지) */
+/** 다시 뽑기: 사진에서 새로 추출한 후보 중 다른 5색 선택 (횟수 제한 없음) */
 function handleRepick() {
-  const { candidateColors, myPicks, palette } = state;
+  const { image, myPicks, palette } = state;
+  if (!image) return;
+
+  /* 사진에서 후보색을 새로 추출 → 누를 때마다 k-means 초기값이 달라져 다른 결과 */
+  const freshCandidates = extractColors(image);
+  setState({ candidateColors: freshCandidates });
 
   /* my pick으로 고정된 색의 HEX 집합 */
   const myPickColors = new Set(
     [...myPicks].map((i) => palette[i])
   );
 
-  /* 새 5색 선택 */
-  const newPalette = pickDistinct(candidateColors, myPickColors, 5);
+  /* 풀 셔플 + 고정색 보존으로 매번 다른 5색 선택 */
+  const newPalette = pickDistinct(freshCandidates, myPickColors, 5);
 
-  /* my pick 인덱스를 새 팔레트에 맞게 재매핑 */
+  /* my pick 인덱스를 새 팔레트 위치에 맞게 재매핑 */
   const newMyPicks = new Set();
   [...myPickColors].forEach((hex) => {
     const idx = newPalette.indexOf(hex);
@@ -347,6 +352,7 @@ function handleHomeClick() {
     mode: 'light',
     loadedCardKey: null,
     isDirty: false,
+    paletteHistory: [],
   });
 
   /* UI 초기화 */

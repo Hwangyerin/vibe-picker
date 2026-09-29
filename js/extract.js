@@ -49,24 +49,32 @@ export function extractColors(img) {
 /**
  * 후보 색 중 서로 너무 비슷하지 않은 5개 고르기
  * - 이미 my pick으로 고정된 색은 무조건 포함
+ * - shuffle 옵션이 true(기본값)이면 풀을 먼저 섞어
+ *   다시 뽑기를 눌렀을 때 매번 다른 조합이 나옴
  * @param {string[]} candidates - 후보 HEX 배열
  * @param {Set<string>} myPickColors - my pick으로 고정된 HEX 집합
  * @param {number} count - 고를 개수 (기본 5)
+ * @param {boolean} shuffle - 풀 셔플 여부 (기본 true)
  * @returns {string[]} 선택된 HEX 배열
  */
-export function pickDistinct(candidates, myPickColors = new Set(), count = 5) {
+export function pickDistinct(candidates, myPickColors = new Set(), count = 5, shuffle = true) {
   /* my pick 색은 결과에 먼저 포함 */
-  const fixed   = [...myPickColors];
-  const pool    = candidates.filter((c) => !myPickColors.has(c));
-  const chosen  = [...fixed];
+  const fixed = [...myPickColors];
 
-  /* 나머지는 이미 고른 색과 가장 멀리 떨어진 순서로 채움 */
+  /* 풀에서 my pick 제외 후, 셔플해서 다시 뽑기마다 다른 조합이 나오게 함 */
+  const pool = candidates
+    .filter((c) => !myPickColors.has(c))
+    .sort(() => shuffle ? Math.random() - 0.5 : 0); /* 셔플 */
+
+  const chosen = [...fixed];
+
+  /* 이미 고른 색들과 가장 다른 색을 순서대로 채움 */
   while (chosen.length < count && pool.length > 0) {
     let bestIdx  = 0;
     let bestDist = -1;
 
     for (let i = 0; i < pool.length; i++) {
-      /* 이미 고른 색들과의 최소 거리 중 가장 큰 것 선택 */
+      /* 고른 색이 없으면 무조건 첫 번째 */
       const minDist = chosen.length === 0
         ? Infinity
         : Math.min(...chosen.map((c) => colorDistance(pool[i], c)));
