@@ -505,7 +505,6 @@ function applyContrastToRoles(roles, offset) {
 function setReadonlyView(readonly) {
   document.getElementById('repick-row').hidden      = readonly;
   document.getElementById('palette-history').hidden = readonly;
-  document.getElementById('tools-section').hidden   = readonly; /* 역할 섞기 */
 }
 
 /** 워크스페이스 화면으로 전환 (홈 화면 숨김) */
@@ -628,7 +627,6 @@ function handleHomeClick() {
   document.getElementById('upload-placeholder').hidden     = false;
   document.getElementById('image-display').hidden          = true;
   document.getElementById('chips-section').hidden          = true;
-  document.getElementById('tools-section').hidden          = true;
   document.getElementById('mockup-viewer-footer').hidden   = true;
   /* 프롬프트 아이콘 버튼 숨김 */
   const promptBtn = document.getElementById('btn-prompt-icon');

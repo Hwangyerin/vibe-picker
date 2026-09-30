@@ -334,9 +334,30 @@
 }
 
 /* ---------- 도구 섹션 (역할 섞기 버튼만) ---------- */
-.tools-section {
+/* 역할 행: 셔플 아이콘 + 역할 배지 */
+.roles-row {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.btn-shuffle-icon {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.btn-shuffle-icon:hover {
+  color: var(--color-text);
+  border-color: var(--color-text);
 }
 
 /* 역할 배지 (뷰어 푸터에서 사용) */
@@ -344,17 +365,6 @@
   display: flex;
   gap: var(--space-sm);
   flex-wrap: wrap;
-}
-
-.shuffle-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.shuffle-desc {
-  font-size: 0.6875rem;   /* 11px */
-  color: var(--color-muted);
-  white-space: nowrap;
 }
 
 .slider-wrap {
@@ -391,12 +401,22 @@
 }
 
 .readability-warning {
+  position: absolute;
+  bottom: 52px; /* footer 높이 위 */
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
-  color: var(--color-warning);
-  font-size: 0.875rem;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.6875rem;
   font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 20;
 }
 
 .mode-toggle {
@@ -427,6 +447,7 @@
 
 /* 목업 뷰어 박스: 고정 높이 */
 .mockup-viewer {
+  position: relative;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
