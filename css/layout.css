@@ -469,22 +469,52 @@
   background-color: var(--color-white);
 }
 
+/* 프롬프트 아이콘 버튼 — 탭 네비 오른쪽 끝 */
+.btn-prompt-icon {
+  margin-left: auto;
+  margin-right: var(--space-sm);
+  width: 30px;
+  height: 30px;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+  flex-shrink: 0;
+}
+.btn-prompt-icon:hover {
+  color: var(--color-text);
+  background: var(--color-border);
+}
+
 /* ---------- 탭 패널 ---------- */
 .mockup-tab-pane {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;   /* 슬라이드 포함 모든 탭에서 스크롤 없음 */
   min-height: 0;
   padding: var(--space-lg);
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-sm);
   align-items: center;
+  justify-content: center;
 }
 
 /* ---------- 슬라이드 캐러셀 ---------- */
 .slide-carousel {
-  position: relative;   /* 화살표 버튼의 기준점 */
+  position: relative;
+  /* 가로 꽉 채우되 높이는 패널 남은 공간 안에서 16:9 비율로 맞춤 */
   width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 원형 반투명 화살표: 슬라이드 위 좌우 중앙에 오버레이 */
@@ -571,6 +601,86 @@
   align-items: center;
   gap: var(--space-md);
   flex-wrap: wrap;
+}
+
+/* ========================================================
+   프롬프트 미리보기 모달
+   ======================================================== */
+.prompt-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 300;
+}
+
+.prompt-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 301;
+  width: min(600px, 90vw);
+  max-height: 80vh;
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+}
+
+.prompt-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.prompt-modal-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.prompt-modal-close {
+  color: var(--color-muted);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.prompt-modal-close:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.prompt-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-lg);
+  font-family: 'Pretendard', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  background: var(--color-surface);
+}
+
+.prompt-modal-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
 /* ---------- AI 프롬프트 섹션 ---------- */

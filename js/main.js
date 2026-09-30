@@ -6,13 +6,13 @@
 import { state, setState, subscribe } from './state.js';
 import { initUpload, setOnImageLoaded }            from './upload.js';
 import { extractColors, pickDistinct }             from './extract.js';
-import { adjustLightness }                         from './color.js';
+import { adjustLightness, adjustContrast }          from './color.js';
 import { assignRoles, shuffleRoles, readabilityWarning } from './roles.js';
 import { renderChips, initEyedropperOverlay,
          setOnEyedropperPick, setOnMyPickRemove,
          deactivateEyedropper } from './chips.js';
 import { renderMockups, applyMode }                from './mockups.js';
-import { initPrompt, showPromptSection }           from './prompt.js';
+import { initPrompt, showPromptSection, setActiveTab } from './prompt.js';
 import { initSaveButton, initDrawer,
          setOnCardLoaded, onStateChange,
          renderHomePalettes }                      from './storage.js';
@@ -138,10 +138,11 @@ function handleImageLoaded(img) {
 function updateUI() {
   const { palette, myPicks, roles, mode, contrastOffset } = state;
 
-  /* 대비 오프셋이 있으면 표시용 팔레트에 적용 (원본 palette는 보존) */
-  const displayPalette = contrastOffset !== 0
-    ? palette.map((hex) => adjustLightness(hex, contrastOffset))
-    : palette;
+  /* 칩은 원본 팔레트 그대로 표시 — 대비 조정은 목업(역할)에만 반영 */
+  const displayPalette = palette;
+  const displayRoles = contrastOffset !== 0
+    ? applyContrastToRoles(roles, contrastOffset)
+    : roles;
 
   /* 칩 렌더링 */
   renderChips(displayPalette, myPicks);
@@ -153,16 +154,16 @@ function updateUI() {
   document.getElementById('mockup-viewer-footer').hidden = false;
 
   /* 역할 배지 업데이트 */
-  renderRolesBadges(roles);
+  renderRolesBadges(displayRoles);
 
   /* 목업 렌더링 */
-  renderMockups(roles, mode);
+  renderMockups(displayRoles, mode);
 
   /* 프롬프트 섹션 표시 */
   showPromptSection();
 
   /* 가독성 경고 */
-  updateWarning(roles.text, roles.bg);
+  updateWarning(displayRoles.text, displayRoles.bg);
 }
 
 /**
@@ -259,7 +260,7 @@ function handleKeep() {
 
   /* 화면에 보이는 팔레트(슬라이더 적용된 색)를 보관 */
   const effectivePalette = contrastOffset !== 0
-    ? palette.map((hex) => adjustLightness(hex, contrastOffset))
+    ? palette.map((hex) => adjustContrast(hex, contrastOffset))
     : [...palette];
 
   /* 이미 같은 팔레트가 보관되어 있으면 무시 */
@@ -367,46 +368,48 @@ function handleShuffle() {
 
 /** 대비 초기화: 슬라이더를 0으로 되돌리고 원본 팔레트 색으로 복원 */
 function handleContrastReset() {
-  const slider = document.getElementById('contrast-slider');
-  slider.value = 0;
+  document.getElementById('contrast-slider').value = 0;
   setState({ contrastOffset: 0, isDirty: true });
 
-  const roles = assignRoles(state.palette);
-  setState({ roles });
+  /* 역할은 유지, 대비 조정 없이 그대로 표시 */
+  const { roles } = state;
   renderChips(state.palette, state.myPicks);
   renderMockups(roles, state.mode);
   renderRolesBadges(roles);
   updateWarning(roles.text, roles.bg);
 }
 
-/** 대비 슬라이더: 색조 유지하며 명도 대비 조절 */
+/**
+ * 대비 슬라이더
+ * - 역할(roles)은 원본 그대로 유지 — state.roles 재배정 없음
+ * - 밝은 색 ↔ 어두운 색을 양방향으로 조절 (adjustContrast)
+ */
 function handleContrastSlider(e) {
   const offset = parseInt(e.target.value, 10);
   setState({ contrastOffset: offset, isDirty: true });
 
-  /* 원본 팔레트에 명도 오프셋 적용 */
-  const adjusted = state.palette.map((hex) => adjustLightness(hex, offset));
-  const roles = assignRoles(adjusted);
-  setState({ roles });
+  const displayRoles = applyContrastToRoles(state.roles, offset);
 
-  renderChips(adjusted, state.myPicks);
-  renderMockups(roles, state.mode);
-  renderRolesBadges(roles);
-  updateWarning(roles.text, roles.bg);
+  /* 칩은 원본 팔레트 그대로 — 대비 조정은 목업에만 반영 */
+  renderChips(state.palette, state.myPicks);
+  renderMockups(displayRoles, state.mode);
+  renderRolesBadges(displayRoles);
+  updateWarning(displayRoles.text, displayRoles.bg);
 }
 
 /** 라이트·다크 전환 */
 function handleModeChange(mode) {
   setState({ mode, isDirty: true });
 
-  /* 버튼 활성 상태 토글 */
   document.getElementById('btn-light').classList.toggle('active', mode === 'light');
   document.getElementById('btn-dark').classList.toggle('active', mode === 'dark');
 
   applyMode(mode);
+
+  const displayRoles = applyContrastToRoles(state.roles, state.contrastOffset);
   updateWarning(
-    mode === 'dark' ? state.roles.textDark : state.roles.text,
-    mode === 'dark' ? state.roles.bgDark   : state.roles.bg,
+    mode === 'dark' ? displayRoles.textDark : displayRoles.text,
+    mode === 'dark' ? displayRoles.bgDark   : displayRoles.bg,
   );
 }
 
@@ -419,11 +422,8 @@ function handleCardLoaded(card, key) {
 
   const offset = card.contrastOffset ?? 0;
 
-  /* 원본 palette와 offset을 기반으로 roles를 재계산 */
-  const adjustedPalette = offset !== 0
-    ? card.palette.map((hex) => adjustLightness(hex, offset))
-    : card.palette;
-  const roles = assignRoles(adjustedPalette);
+  /* 저장된 roles를 그대로 사용 (없으면 원본 팔레트로 재계산) */
+  const roles = card.roles ?? assignRoles(card.palette);
 
   setState({
     image:          null,
@@ -460,6 +460,27 @@ function handleCardLoaded(card, key) {
  * - true : 서랍에서 불러온 상태 — 업로드·편집 버튼 모두 숨김
  * - false: 사진 업로드 후 정상 편집 상태
  */
+/**
+ * 역할별 색에 대비 오프셋을 적용한 표시용 roles 반환
+ * state.roles는 변경하지 않음
+ */
+/**
+ * 역할별 색에 대비 오프셋을 적용한 표시용 roles 반환
+ * bg / bgDark 는 건드리지 않음 — 팔레트 색조 기반 화이트/블랙으로 고정
+ */
+function applyContrastToRoles(roles, offset) {
+  if (!roles || offset === 0) return roles;
+  return {
+    bg:       roles.bg,       /* 배경은 고정 */
+    bgDark:   roles.bgDark,   /* 다크 배경도 고정 */
+    text:     adjustContrast(roles.text,     offset),
+    main:     adjustContrast(roles.main,     offset),
+    point:    adjustContrast(roles.point,    offset),
+    sub:      adjustContrast(roles.sub,      offset),
+    textDark: adjustContrast(roles.textDark, offset),
+  };
+}
+
 function setReadonlyView(readonly) {
   document.getElementById('repick-row').hidden      = readonly;
   document.getElementById('palette-history').hidden = readonly;
@@ -492,6 +513,9 @@ function initMockupTabs() {
       document.querySelectorAll('.mockup-tab-pane').forEach((pane) => {
         pane.hidden = pane.id !== `mockup-pane-${tab}`;
       });
+
+      /* 프롬프트 탭 컨텍스트 업데이트 */
+      setActiveTab(tab);
     });
   });
 }
@@ -599,8 +623,10 @@ function handleHomeClick() {
   document.getElementById('image-display').hidden          = true;
   document.getElementById('chips-section').hidden          = true;
   document.getElementById('tools-section').hidden          = true;
-  document.getElementById('prompt-section').hidden         = true;
   document.getElementById('mockup-viewer-footer').hidden   = true;
+  /* 프롬프트 아이콘 버튼 숨김 */
+  const promptBtn = document.getElementById('btn-prompt-icon');
+  if (promptBtn) promptBtn.hidden = true;
 
   /* 슬라이더·모드 버튼 리셋 */
   document.getElementById('contrast-slider').value = 0;

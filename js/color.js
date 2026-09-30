@@ -96,11 +96,28 @@ export function isReadable(fg, bg) {
  */
 export function adjustLightness(hex, amount) {
   const [r, g, b] = hexToRgb(hex);
-  /* RGB → HSL */
   const [h, s, l] = rgbToHsl(r, g, b);
-  /* 명도 클램프 (0~100) */
   const newL = Math.max(0, Math.min(100, l + amount));
-  /* HSL → RGB → HEX */
+  return rgbToHex(hslToRgb(h, s, newL));
+}
+
+/**
+ * 대비 슬라이더용 양방향 명도 조절
+ * - amount > 0: 밝은 색(L≥50)은 더 밝게, 어두운 색(L<50)은 더 어둡게 → 대비 강조
+ * - amount < 0: 반대 방향 → 대비 완화, 부드러운 느낌
+ * - 색조(H)·채도(S)는 건드리지 않음
+ * - 명도를 8~92% 범위로 제한해 흰색·검정으로 뭉개지지 않게 함
+ * @param {string} hex
+ * @param {number} amount - -30~30
+ * @returns {string}
+ */
+export function adjustContrast(hex, amount) {
+  if (amount === 0) return hex;
+  const [r, g, b] = hexToRgb(hex);
+  const [h, s, l] = rgbToHsl(r, g, b);
+  /* 현재 색이 밝은 쪽이면 amount와 같은 방향, 어두운 쪽이면 반대 방향 */
+  const direction = l >= 50 ? 1 : -1;
+  const newL = Math.max(8, Math.min(92, l + direction * amount * 0.7));
   return rgbToHex(hslToRgb(h, s, newL));
 }
 
