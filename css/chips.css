@@ -44,11 +44,12 @@
 
 /* ---------- 직사각형 색 블록 ---------- */
 .chip-swatch-row {
-  position: relative;  /* X 버튼 위치 기준 */
+  position: relative;
   width: 100%;
   height: 80px;
   flex-shrink: 0;
   overflow: hidden;
+  cursor: pointer;
 }
 
 .chip-swatch {
@@ -57,6 +58,53 @@
   border-radius: 0;
   border: none;
   display: block;
+}
+
+/* 호버 시 반투명 검정 오버레이 + 피커 아이콘 */
+.chip-swatch-row::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  pointer-events: none;
+}
+
+/* 피커 아이콘 (SVG data URI) */
+.chip-swatch-row::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 26px;
+  height: 26px;
+  background-image: url("data:image/svg+xml,%3Csvg width='163' height='163' viewBox='0 0 163 163' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M81.4463 71.8768L91.0498 81.4802L47.0058 125.524C46.3745 126.156 45.6248 126.657 44.7997 126.998C43.9746 127.339 43.0903 127.515 42.1973 127.514H35.4056V120.722C35.406 118.921 36.1218 117.194 37.3956 115.921L81.4463 71.8768ZM71.8361 62.2666L27.7922 106.317C23.975 110.137 21.8303 115.316 21.8291 120.716V134.299C21.8291 136.1 22.5446 137.828 23.8183 139.101C25.092 140.375 26.8195 141.091 28.6208 141.091H42.2041C47.6041 141.09 52.7828 138.945 56.6024 135.128L100.653 91.0836C103.2 93.6301 106.655 95.0606 110.257 95.0606C113.858 95.0606 117.313 93.6301 119.86 91.0836L124.669 86.2819C127.649 83.3023 129.633 79.4717 130.345 75.3178C131.058 71.1639 130.465 66.8912 128.648 63.0884L139.074 52.6632C140.966 50.771 142.467 48.5247 143.491 46.0525C144.515 43.5803 145.042 40.9306 145.042 38.2547C145.042 35.5787 144.515 32.929 143.491 30.4568C142.467 27.9846 140.966 25.7383 139.074 23.8461C137.181 21.954 134.935 20.453 132.463 19.429C129.991 18.405 127.341 17.8779 124.665 17.8779C121.989 17.8779 119.339 18.405 116.867 19.429C114.395 20.453 112.149 21.954 110.257 23.8461L99.8382 34.2713C96.0347 32.4553 91.7615 31.8635 87.6076 32.5775C83.4537 33.2915 79.6235 35.2762 76.6446 38.2581L71.8429 43.0598C69.2965 45.607 67.8659 49.0614 67.8659 52.6632C67.8659 56.265 69.2965 59.7193 71.8429 62.2666' fill='white'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0;
+  z-index: 1;
+  transition: opacity var(--transition-fast);
+  pointer-events: none;
+}
+
+/* my pick이 아닌 칩만 호버 오버레이 표시 */
+.color-chip:not(.is-mypick) .chip-swatch-row:hover::after,
+.color-chip:not(.is-mypick) .chip-swatch-row:hover::before {
+  opacity: 1;
+}
+
+/* 선택(스포이드 활성) 상태는 항상 오버레이 표시 */
+.color-chip.selected .chip-swatch-row::after,
+.color-chip.selected .chip-swatch-row::before {
+  opacity: 1;
+}
+
+/* my pick 칩은 커서 기본으로 */
+.color-chip.is-mypick .chip-swatch-row {
+  cursor: default;
 }
 
 /* my pick 해제 X 버튼 — 호버 시에만 등장 */

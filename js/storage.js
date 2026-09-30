@@ -193,10 +193,16 @@ function buildCardEl(key, card) {
     renderDrawerList();
   });
 
-  /* 카드 클릭 → 팔레트 불러오기 */
+  /* 카드 클릭 → 팔레트 불러오기 (확인 후 서랍 닫기) */
   el.addEventListener('click', () => {
-    loadCard(key, card);
+    if (state.isDirty) {
+      const ok = window.confirm(
+        '저장하지 않은 작업이 있어요.\n지금 불러오면 현재 작업이 사라집니다. 계속할까요?'
+      );
+      if (!ok) return;
+    }
     closeDrawer();
+    onCardLoaded?.(card, key);
   });
 
   el.appendChild(bar);
@@ -269,8 +275,15 @@ export function setOnCardLoaded(fn) {
 
 /**
  * 저장된 카드를 작업 화면으로 불러옴
+ * 저장되지 않은 작업이 있으면 확인 다이얼로그 표시
  */
 function loadCard(key, card) {
+  if (state.isDirty) {
+    const ok = window.confirm(
+      '저장하지 않은 작업이 있어요.\n지금 불러오면 현재 작업이 사라집니다. 계속할까요?'
+    );
+    if (!ok) return;
+  }
   onCardLoaded?.(card, key);
 }
 

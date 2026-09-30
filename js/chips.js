@@ -66,7 +66,7 @@ function buildChip(hex, idx, isMyPick) {
 
   /* 칩 전체 래퍼 */
   const chip = document.createElement('div');
-  chip.className = 'color-chip';
+  chip.className = isMyPick ? 'color-chip is-mypick' : 'color-chip';
   chip.dataset.index = idx;
 
   /* ── 동그란 색 원 영역 ── */
@@ -124,10 +124,10 @@ function buildChip(hex, idx, isMyPick) {
   chip.appendChild(hexRow);
   chip.appendChild(rgbRow);
 
-  /* ── 스포이드 모드: 칩 클릭하면 해당 칩이 스포이드 대상이 됨 ── */
+  /* ── 스포이드 모드: my pick 칩은 클릭해도 활성화 안 됨 ── */
   chip.addEventListener('click', (e) => {
-    /* 복사 클릭과 충돌하지 않도록 hex/rgb 클릭은 제외 */
     if (e.target === hexText || e.target === rgbText) return;
+    if (isMyPick) return;   /* my pick 상태면 X 버튼으로 해제 후 픽 가능 */
     activateEyedropper(idx, chip);
   });
 
