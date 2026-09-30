@@ -10,7 +10,6 @@
   width: 100%;
   border-radius: var(--radius-md);
   overflow: hidden;
-  border: 1px solid var(--color-border);
 }
 
 /* ---------- 칩 하나 ---------- */
@@ -21,12 +20,8 @@
   align-items: stretch;
   min-width: 0;
   background-color: var(--color-white);
-  border-right: 1px solid var(--color-border);
   transition: box-shadow var(--transition-fast);
   cursor: default;
-}
-.color-chip:last-child {
-  border-right: none;
 }
 
 /* 스포이드 모드에서 마우스를 올리면 선택 가능 표시 */
@@ -150,9 +145,9 @@
 
 /* ---------- HEX 코드 줄 ---------- */
 .chip-hex-row {
+  position: relative;
   width: 100%;
-  border-top: 1px solid var(--color-border);
-  padding: 4px var(--space-xs);
+  padding: 6px var(--space-xs) 2px;
   text-align: center;
   background-color: var(--color-white);
 }
@@ -177,9 +172,9 @@
 
 /* ---------- RGB 코드 줄 ---------- */
 .chip-rgb-row {
+  position: relative;
   width: 100%;
-  border-top: 1px solid var(--color-border);
-  padding: 3px var(--space-xs);
+  padding: 2px var(--space-xs) 6px;
   text-align: center;
   background-color: var(--color-white);
 }
@@ -244,9 +239,33 @@
 
 /* ---------- 복사됨 뱃지 ---------- */
 .chip-copied {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text);
+  background: var(--color-white);
+  border-radius: var(--radius-sm);
+  z-index: 10;
+  pointer-events: none;
+  animation: copiedSwap 1.4s ease forwards;
+}
+
+.chip-hex-row .chip-copied {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.chip-rgb-row .chip-copied {
   font-size: 0.5625rem;
+  font-weight: 400;
   color: var(--color-muted);
-  display: block;
-  text-align: center;
-  animation: fadeInOut 1.5s ease forwards;
+}
+
+@keyframes copiedSwap {
+  0%   { opacity: 1; }
+  65%  { opacity: 1; }
+  100% { opacity: 0; }
 }

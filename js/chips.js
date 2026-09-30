@@ -147,11 +147,11 @@ function copyAndFlash(text, el) {
 
     const badge = document.createElement('span');
     badge.className = 'chip-copied';
-    badge.textContent = '복사됨';
+    badge.textContent = 'copied!';
     el.parentElement.appendChild(badge);
 
-    /* 1.5초 뒤 제거 (CSS 애니메이션과 타이밍 맞춤) */
-    setTimeout(() => badge.remove(), 1500);
+    /* 1.4초 뒤 제거 (CSS 애니메이션과 타이밍 맞춤) */
+    setTimeout(() => badge.remove(), 1400);
   }).catch(() => {
     /* Clipboard API가 안 되는 환경 대비 (드물지만) */
     fallbackCopy(text);

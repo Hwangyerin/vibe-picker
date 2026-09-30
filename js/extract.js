@@ -105,11 +105,15 @@ function kmeans(pixels, k, maxIter) {
   if (pixels.length === 0) return [];
   if (pixels.length < k) return pixels.map((p) => [...p]);
 
-  /* 초기 중심: 픽셀 중 균등 간격으로 k개 선택 */
+  /* 초기 중심: 픽셀 중 k개를 무작위로 선택 — 매 호출마다 다른 결과 */
   let centers = [];
-  const step = Math.floor(pixels.length / k);
-  for (let i = 0; i < k; i++) {
-    centers.push([...pixels[i * step]]);
+  const used = new Set();
+  while (centers.length < k) {
+    const idx = Math.floor(Math.random() * pixels.length);
+    if (!used.has(idx)) {
+      used.add(idx);
+      centers.push([...pixels[idx]]);
+    }
   }
 
   for (let iter = 0; iter < maxIter; iter++) {

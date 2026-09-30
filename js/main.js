@@ -358,11 +358,32 @@ function handleHistoryRemove(idx) {
   renderPaletteHistory();
 }
 
-/** 랜덤 섞기: 5색 안에서 역할 무작위 재배정 */
+/** 랜덤 섞기
+ * - my pick 없음: 같은 5색에서 역할만 무작위 재배정
+ * - my pick 있음: my pick 색은 유지하고 나머지 슬롯에 새 후보색 선택
+ */
 function handleShuffle() {
-  const { palette } = state;
-  const roles = shuffleRoles(palette);
-  setState({ roles, isDirty: true });
+  const { palette, myPicks } = state;
+
+  if (myPicks.size > 0 && state.image) {
+    const myPickColors = new Set([...myPicks].map((i) => palette[i]));
+    const freshCandidates = extractColors(state.image);
+    setState({ candidateColors: freshCandidates });
+    const newPalette = pickDistinct(freshCandidates, myPickColors, 5);
+
+    const newMyPicks = new Set();
+    [...myPickColors].forEach((hex) => {
+      const idx = newPalette.indexOf(hex);
+      if (idx !== -1) newMyPicks.add(idx);
+    });
+
+    const roles = assignRoles(newPalette);
+    setState({ palette: newPalette, myPicks: newMyPicks, roles, isDirty: true });
+  } else {
+    const roles = shuffleRoles(palette);
+    setState({ roles, isDirty: true });
+  }
+
   updateUI();
 }
 
@@ -571,28 +592,13 @@ function handleEyedropperPick(hex, chipIdx) {
  * - 후보색 중 나머지 4색과 가장 다른 색으로 교체
  */
 function handleMyPickRemove(chipIdx) {
-  const { palette, candidateColors, myPicks } = state;
+  const { myPicks } = state;
 
-  /* 나머지 4색 (교체될 칩 제외) */
-  const remaining = palette.filter((_, i) => i !== chipIdx);
-
-  /* 후보색 중 나머지 4색과 가장 멀리 떨어진 색 1개 고르기
-     pickDistinct(candidates, fixed, count) 활용:
-     fixed = 나머지 4색, count = 5 → 5번째가 새 색 */
-  const candidates = candidateColors.length > 0 ? candidateColors : palette;
-  const picked = pickDistinct(candidates, new Set(remaining), remaining.length + 1);
-  const newColor = picked[remaining.length] ?? candidates[0];
-
-  /* 팔레트 교체 */
-  const newPalette = [...palette];
-  newPalette[chipIdx] = newColor;
-
-  /* my pick 해제 */
+  /* 색은 그대로 두고 my pick 상태만 해제 */
   const newMyPicks = new Set(myPicks);
   newMyPicks.delete(chipIdx);
 
-  const roles = assignRoles(newPalette);
-  setState({ palette: newPalette, myPicks: newMyPicks, roles, isDirty: true });
+  setState({ myPicks: newMyPicks, isDirty: true });
   updateUI();
 }
 

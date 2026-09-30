@@ -66,8 +66,12 @@ export function assignRoles(palette) {
  *             bgDark: string, textDark: string }}
  */
 export function shuffleRoles(palette) {
-  /* 팔레트를 무작위로 섞음 */
-  const shuffled = [...palette].sort(() => Math.random() - 0.5);
+  /* Fisher-Yates 셔플 — sort() 기반보다 통계적으로 균등 */
+  const shuffled = [...palette];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
 
   /* 배경: 섞인 첫 번째 색의 색조로 배경 파생 */
   const bg     = makeLightBg(shuffled[0]);
