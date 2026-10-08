@@ -31,8 +31,9 @@ VibePicker는 누구나 보는 순간 분위기를 느끼는 사진에서 출발
 
 ### 사용해 보기
 
-- 배포 링크: (1단계 완료 후 추가)
-- 스크린샷: (작업 진행 후 추가)
+- 배포 링크: https://hwangyerin.github.io/vibe-picker/
+- 스크린샷: <img width="1379" height="821" alt="image" src="https://github.com/user-attachments/assets/c50ac438-49a5-4f32-9bc9-220be2187eeb" />
+
 
 ## 2. PRD와 Todo 리스트
 
