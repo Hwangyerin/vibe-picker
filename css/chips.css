@@ -86,8 +86,8 @@
 }
 
 /* my pick이 아닌 칩만 호버 오버레이 표시 */
-.color-chip:not(.is-mypick) .chip-swatch-row:hover::after,
-.color-chip:not(.is-mypick) .chip-swatch-row:hover::before {
+.color-chip:not(.is-mypick):not(.is-locked) .chip-swatch-row:hover::after,
+.color-chip:not(.is-mypick):not(.is-locked) .chip-swatch-row:hover::before {
   opacity: 1;
 }
 
@@ -97,8 +97,9 @@
   opacity: 1;
 }
 
-/* my pick 칩은 커서 기본으로 */
-.color-chip.is-mypick .chip-swatch-row {
+/* my pick 칩·사진 없는 칩은 커서 기본으로 */
+.color-chip.is-mypick .chip-swatch-row,
+.color-chip.is-locked .chip-swatch-row {
   cursor: default;
 }
 

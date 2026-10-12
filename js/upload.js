@@ -3,7 +3,7 @@
    파일 선택 / 드래그앤드롭 / 샘플 클릭 세 가지 경로 처리
    ========================================================== */
 
-import { state, setState } from './state.js';
+import { setState } from './state.js';
 
 /* 샘플 사진 경로 (samples/ 폴더에 있어야 함) */
 const SAMPLE_PATHS = [
@@ -21,6 +21,22 @@ let onImageLoaded = null;
  */
 export function setOnImageLoaded(fn) {
   onImageLoaded = fn;
+}
+
+/**
+ * 저장해 둔 프리뷰(base64)를 사진 영역에 다시 그림 (새로고침 뒤 복원)
+ * - 색 추출은 다시 하지 않음: 팔레트는 저장된 값을 그대로 씀
+ * @param {string} src - base64 data URL
+ * @param {(img: HTMLImageElement|null) => void} onReady - 실패하면 null
+ */
+export function restoreImage(src, onReady) {
+  const img = new Image();
+  img.onload = () => {
+    showImageDisplay(img);
+    onReady(img);
+  };
+  img.onerror = () => onReady(null);
+  img.src = src;
 }
 
 /**
@@ -93,10 +109,8 @@ function loadSrc(src) {
     /* 사진 표시 영역 전환 */
     showImageDisplay(img);
 
-    /* 썸네일(80px) + 프리뷰(800px) 생성 후 상태에 저장 */
-    const thumbnail    = makeThumbnail(img);
-    const previewImage = makePreviewImage(img);
-    setState({ thumbnail, previewImage });
+    /* 프리뷰(800px) 생성 후 상태에 저장 — 새로고침 뒤 복원용 */
+    setState({ previewImage: makePreviewImage(img) });
 
     /* 색 추출 등 후속 작업을 main.js가 처리 */
     onImageLoaded?.(img);
@@ -129,25 +143,7 @@ function showImageDisplay(img) {
 }
 
 /**
- * 이미지를 작은 썸네일(base64)로 변환 (서랍 카드 미리보기용 — 80px 소형)
- * @param {HTMLImageElement} img
- * @param {number} maxW - 최대 너비 (기본 80px)
- * @returns {string} base64 data URL
- */
-function makeThumbnail(img, maxW = 80) {
-  const scale  = Math.min(1, maxW / img.naturalWidth);
-  const w = Math.round(img.naturalWidth  * scale);
-  const h = Math.round(img.naturalHeight * scale);
-
-  const canvas = document.createElement('canvas');
-  canvas.width  = w;
-  canvas.height = h;
-  canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-  return canvas.toDataURL('image/jpeg', 0.7);
-}
-
-/**
- * 이미지를 큰 프리뷰(base64)로 변환 (서랍에서 불러올 때 캔버스 표시용 — 800px 대형)
+ * 이미지를 프리뷰(base64)로 변환 (새로고침 뒤 복원용 — 최대 800px)
  * @param {HTMLImageElement} img
  * @param {number} maxW - 최대 너비 (기본 800px)
  * @returns {string} base64 data URL

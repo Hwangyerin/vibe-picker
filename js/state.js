@@ -12,10 +12,7 @@ const state = {
   /* 현재 올라온 이미지 (HTMLImageElement) */
   image: null,
 
-  /* 사진 썸네일 (base64, 서랍 카드 미리보기용 — 80px 소형) */
-  thumbnail: null,
-
-  /* 사진 프리뷰 (base64, 서랍에서 불러올 때 캔버스 표시용 — 800px 대형) */
+  /* 사진 프리뷰 (base64, 최대 800px — 새로고침 뒤 작업을 되살릴 때 사용) */
   previewImage: null,
 
   /* 후보 색 10~12개 (k-means 결과, HEX 문자열 배열) */
@@ -28,10 +25,10 @@ const state = {
   myPicks: new Set(),
 
   /* 색 역할 배정 결과
-     { bg, text, main, point, sub } — 각각 HEX 문자열 */
+     { bg, text, main, point, sub, bgDark, textDark } — 각각 HEX 문자열 */
   roles: null,
 
-  /* 대비 슬라이더 값 (-50 ~ +50, 기본 0) */
+  /* 대비 슬라이더 값 (-30 ~ +30, 기본 0) */
   contrastOffset: 0,
 
   /* 현재 모드: 'light' | 'dark' */

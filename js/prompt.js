@@ -4,6 +4,8 @@
    ========================================================== */
 
 import { state } from './state.js';
+import { applyContrastToRoles } from './roles.js';
+import { liftForDark } from './color.js';
 
 /* 현재 활성 탭 — initMockupTabs에서 업데이트 (main.js에서 호출) */
 let activeTab = 'slide';
@@ -16,6 +18,11 @@ export function setActiveTab(tab) {
    프롬프트 빌더
    ========================================================= */
 
+/** 화면에 보이는 색 그대로 — 대비 슬라이더가 적용된 roles */
+function currentRoles() {
+  return applyContrastToRoles(state.roles, state.contrastOffset);
+}
+
 /** 라이트/다크 팔레트 테이블 공통 블록 */
 function paletteBlock(roles, mode) {
   const lightBg   = roles.bg;
@@ -23,6 +30,13 @@ function paletteBlock(roles, mode) {
   const darkBg    = roles.bgDark;
   const darkText  = roles.textDark;
   const primary   = mode === 'dark' ? 'dark' : 'light';
+
+  /* 다크 배경에 묻히는 색은 예시 화면과 똑같이 밝기를 올린 값으로 안내 */
+  const darkRow = (name, hex) => {
+    const lifted = liftForDark(hex, darkBg);
+    const note   = lifted === hex ? 'Same role as light mode' : 'Same role as light mode (lightened to stay visible on dark bg)';
+    return `| ${name} | \`${lifted}\` | ${note} |`;
+  };
 
   return `## Color Palette
 
@@ -40,9 +54,9 @@ function paletteBlock(roles, mode) {
 |-------|-----|-------|
 | bg    | \`${darkBg}\` | Page / card background |
 | text  | \`${darkText}\` | All body text, headings, labels |
-| main  | \`${roles.main}\` | Same role as light mode |
-| point | \`${roles.point}\` | Same role as light mode |
-| sub   | \`${roles.sub}\` | Same role as light mode |`;
+${darkRow('main ', roles.main)}
+${darkRow('point', roles.point)}
+${darkRow('sub  ', roles.sub)}`;
 }
 
 /** 공통 색 사용 규칙 */
@@ -52,7 +66,8 @@ const COLOR_RULES = `## Color Rules (follow strictly)
 3. Use **main** for the primary brand element per section (nav bar, primary button, active tab).
 4. Use **point** sparingly — 1–2 elements max per section — to direct the user's eye.
 5. Use **sub** for low-emphasis elements that should recede visually.
-6. Never use pure \`#FFFFFF\` or \`#000000\`. Use the bg/text values above.
+6. Never use pure \`#FFFFFF\` or \`#000000\` for backgrounds or body text — use the bg/text values above.
+   Only exception: a label sitting on a main/point fill may be white or near-black, whichever reads better on that fill.
 7. Never add new colors. For hover/active states, use opacity variants (e.g. main at 80% opacity).`;
 
 /** 공통 기본 스타일 */
@@ -68,7 +83,8 @@ const BASE_STYLE = `## Typography & Layout
 
 /** 슬라이드용 프롬프트 */
 function buildSlidePrompt() {
-  const { roles, mode } = state;
+  const { mode } = state;
+  const roles = currentRoles();
   if (!roles) return '';
 
   return `You are a presentation designer. Create slides using **exactly** the color palette below — do not substitute or add any colors not listed.
@@ -101,7 +117,8 @@ ${BASE_STYLE}
 
 /** 웹/앱용 프롬프트 */
 function buildWebAppPrompt(type) {
-  const { roles, mode } = state;
+  const { mode } = state;
+  const roles = currentRoles();
   if (!roles) return '';
 
   const typeLabel = type === 'app' ? 'mobile app' : 'web interface';
@@ -116,7 +133,7 @@ function buildWebAppPrompt(type) {
 - Design for a desktop viewport (~1280px), responsive down to 768px.
 - Include a sticky top navigation bar with logo (main color) and nav links.
 - Use a clear visual hierarchy: hero → features/content → CTA.
-- CTA buttons: background point, text bg (or white). Primary buttons: background main.
+- CTA buttons: background point. Primary buttons: background main. Button labels: white or near-black, whichever reads better.
 - Cards and sections should breathe — use generous padding (32–48px).`;
 
   return `You are a UI/UX designer and front-end developer. Build the ${typeLabel} described at the end of this prompt using **exactly** the color palette below.
@@ -138,8 +155,8 @@ ${extras}
 |-----------|-------|
 | Page background | bg |
 | All body text | text |
-| Primary button | main (text: bg) |
-| CTA / accent button | point (text: bg) |
+| Primary button | main (label: white or near-black, whichever reads better) |
+| CTA / accent button | point (label: white or near-black, whichever reads better) |
 | Nav bar background | main or bg |
 | Card background | bg with slight shadow |
 | Input border (default) | sub |
@@ -210,12 +227,8 @@ export function initPrompt() {
     modal.hidden      = false;
   });
 
-  function closeModal() {
-    backdrop.hidden = true;
-    modal.hidden    = true;
-  }
-  btnClose.addEventListener('click', closeModal);
-  backdrop.addEventListener('click', closeModal);
+  btnClose.addEventListener('click', closePromptModal);
+  backdrop.addEventListener('click', closePromptModal);
 
   btnCopy.addEventListener('click', () => {
     copyText(body.textContent, () => {
@@ -223,6 +236,12 @@ export function initPrompt() {
       setTimeout(() => { badge.hidden = true; }, 1500);
     });
   });
+}
+
+/** 프롬프트 미리보기 모달 닫기 */
+export function closePromptModal() {
+  document.getElementById('prompt-modal-backdrop').hidden = true;
+  document.getElementById('prompt-modal').hidden          = true;
 }
 
 export function showPromptSection() {

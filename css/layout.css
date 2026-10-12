@@ -360,11 +360,43 @@
   border-color: var(--color-text);
 }
 
-/* 역할 배지 (뷰어 푸터에서 사용) */
+/* 역할 배지 (뷰어 푸터에서 사용)
+   5칸 격자 — 뷰어 폭이 줄어도 두 줄로 넘치지 않음 */
 .roles-display {
-  display: flex;
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
   gap: var(--space-sm);
-  flex-wrap: wrap;
+}
+
+/* 배지 하나: 왼쪽 색 점, 오른쪽에 역할 이름(위)·HEX(아래) */
+.role-badge {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 6px;
+  align-items: center;
+  min-width: 0;
+  line-height: 1.3;
+}
+.role-dot {
+  grid-row: 1 / 3;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+.role-name {
+  font-size: 0.6875rem;   /* 11px */
+  color: var(--color-text-sub);
+}
+.role-hex {
+  font-size: 0.75rem;     /* 12px */
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .slider-wrap {
@@ -402,9 +434,9 @@
 
 .readability-warning {
   position: absolute;
-  bottom: 52px; /* footer 높이 위 */
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 100%;   /* 푸터 윗변 기준 — 푸터 높이가 달라져도 따라감 */
+  left: var(--space-md);
+  margin-bottom: var(--space-sm);
   display: flex;
   align-items: center;
   gap: 5px;
@@ -454,7 +486,7 @@
   background-color: var(--color-white);
   display: flex;
   flex-direction: column;
-  height: 540px;
+  height: 620px;
 }
 
 /* ---------- 탭 네비게이션 ---------- */
@@ -518,7 +550,7 @@
   flex: 1;
   overflow: hidden;   /* 슬라이드 포함 모든 탭에서 스크롤 없음 */
   min-height: 0;
-  padding: var(--space-lg);
+  padding: var(--space-md);
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -608,6 +640,7 @@
 
 /* ---------- 뷰어 하단 컨트롤 ---------- */
 .mockup-viewer-footer {
+  position: relative;   /* 가독성 경고의 기준점 */
   border-top: 1px solid var(--color-border);
   padding: var(--space-md) var(--space-lg);
   background-color: var(--color-surface);
@@ -702,12 +735,4 @@
   padding: var(--space-md) var(--space-lg);
   border-top: 1px solid var(--color-border);
   flex-shrink: 0;
-}
-
-/* ---------- AI 프롬프트 섹션 ---------- */
-.prompt-section {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding-bottom: var(--space-xl);
 }

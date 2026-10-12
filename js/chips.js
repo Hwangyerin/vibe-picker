@@ -4,7 +4,7 @@
    ========================================================== */
 
 import { hexToRgbString } from './color.js';
-import { state, setState } from './state.js';
+import { state } from './state.js';
 
 /* 스포이드 모드가 켜졌을 때 선택 대기 중인 칩 인덱스 */
 let eyedropperTargetIdx = null;
@@ -67,6 +67,9 @@ function buildChip(hex, idx, isMyPick) {
   /* 칩 전체 래퍼 */
   const chip = document.createElement('div');
   chip.className = isMyPick ? 'color-chip is-mypick' : 'color-chip';
+  /* 서랍에서 불러온 카드는 사진이 없어 스포이드로 찍을 곳이 없음 */
+  const canPick = Boolean(state.image);
+  if (!canPick) chip.classList.add('is-locked');
   chip.dataset.index = idx;
 
   /* ── 동그란 색 원 영역 ── */
@@ -128,6 +131,7 @@ function buildChip(hex, idx, isMyPick) {
   chip.addEventListener('click', (e) => {
     if (e.target === hexText || e.target === rgbText) return;
     if (isMyPick) return;   /* my pick 상태면 X 버튼으로 해제 후 픽 가능 */
+    if (!canPick) return;
     activateEyedropper(idx, chip);
   });
 

@@ -76,16 +76,6 @@ export function contrastRatio(hex1, hex2) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-/**
- * 대비가 WCAG AA 기준(4.5:1 일반 텍스트)을 통과하는지 확인
- * @param {string} fg - 글자색 HEX
- * @param {string} bg - 배경색 HEX
- * @returns {boolean}
- */
-export function isReadable(fg, bg) {
-  return contrastRatio(fg, bg) >= 4.5;
-}
-
 /* ---------- 밝기 조절 ---------- */
 
 /**
@@ -200,22 +190,29 @@ export function makeDarkBg(mainHex) {
   return rgbToHex(hslToRgb(h, 15, 10));
 }
 
+/* ---------- 색 면 위 글자색·다크용 색 ---------- */
+
 /**
- * 두 색 중 더 밝은 쪽(명도 기준)을 반환
- * @param {string} hex1
- * @param {string} hex2
+ * 색 면(버튼·카드) 위에 올릴 글자색: 흰색과 검정 중 대비가 높은 쪽
+ * @param {string} hex - 면의 색
  * @returns {string}
  */
-export function lighter(hex1, hex2) {
-  return luminance(hex1) >= luminance(hex2) ? hex1 : hex2;
+export function onColor(hex) {
+  const WHITE = '#FFFFFF';
+  const BLACK = '#16161A';
+  return contrastRatio(WHITE, hex) >= contrastRatio(BLACK, hex) ? WHITE : BLACK;
 }
 
 /**
- * 두 색 중 더 어두운 쪽을 반환
- * @param {string} hex1
- * @param {string} hex2
+ * 다크 배경에 묻히는 색(대비 3:1 미만)은 색조는 두고 명도만 올려서 반환
+ * @param {string} hex
+ * @param {string} bgDark - 다크 배경 HEX
  * @returns {string}
  */
-export function darker(hex1, hex2) {
-  return luminance(hex1) < luminance(hex2) ? hex1 : hex2;
+export function liftForDark(hex, bgDark) {
+  let out = hex;
+  for (let i = 0; i < 8 && contrastRatio(out, bgDark) < 3; i++) {
+    out = adjustLightness(out, 6);
+  }
+  return out;
 }

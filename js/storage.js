@@ -99,7 +99,7 @@ function openDrawer() {
   renderDrawerList();
 }
 
-function closeDrawer() {
+export function closeDrawer() {
   document.getElementById('drawer-backdrop').hidden = true;
   document.getElementById('drawer-panel').hidden    = true;
 }
@@ -146,18 +146,11 @@ function buildColorBar(card, barClass, blockClass) {
   const bar = document.createElement('div');
   bar.className = barClass;
 
-  /* 역할 순서와 비중 (배경이 가장 넓고, 글자가 가장 좁음) */
-  const roleWeights = [
-    { key: 'bg',    flex: 4   },
-    { key: 'main',  flex: 3   },
-    { key: 'point', flex: 2   },
-    { key: 'sub',   flex: 1.5 },
-    { key: 'text',  flex: 1   },
-  ];
+  /* 역할별 비중: 배경 · 메인 · 포인트 · 보조 · 글자 순 (배경이 가장 넓고, 글자가 가장 좁음) */
+  const ROLE_FLEX = [4, 3, 2, 1.5, 1];
 
-  /* 팔레트 순서대로, 비중만 roleWeights 순서로 적용 */
-  card.palette.forEach((hex, i) => {
-    const flex = roleWeights[i]?.flex ?? 1;
+  colorsByRole(card).forEach((hex, i) => {
+    const flex = ROLE_FLEX[i] ?? 1;
     const block = document.createElement('div');
     block.className = blockClass;
     block.style.backgroundColor = hex;
@@ -170,6 +163,26 @@ function buildColorBar(card, barClass, blockClass) {
   });
 
   return bar;
+}
+
+/**
+ * 카드의 5색을 역할 순서(배경 · 메인 · 포인트 · 보조 · 글자)로 정렬
+ * - 배경 자리는 배경의 바탕이 된 팔레트 색(다른 역할에 안 쓰인 색)
+ * - 예전 방식으로 저장돼 역할과 색이 하나씩 짝지어지지 않는 카드는 팔레트 순서 그대로
+ * @param {{ palette: string[], roles?: object }} card
+ * @returns {string[]}
+ */
+function colorsByRole({ palette, roles }) {
+  if (!roles) return palette;
+
+  const used  = [roles.main, roles.point, roles.sub, roles.text];
+  const seeds = palette.filter((hex) => !used.includes(hex));
+  const ordered = [seeds[0], ...used];
+
+  const oneToOne = seeds.length === 1
+    && new Set(ordered).size === palette.length
+    && ordered.every((hex) => palette.includes(hex));
+  return oneToOne ? ordered : palette;
 }
 
 /**
@@ -319,6 +332,67 @@ function loadIndex() {
 
 function saveIndex(index) {
   localStorage.setItem(INDEX_KEY, JSON.stringify(index));
+}
+
+/* =========================================================
+   작업 중인 화면 임시 보관 (새로고침 대비)
+   - sessionStorage: 탭을 닫으면 사라짐, 서랍(localStorage)과는 별개
+   ========================================================= */
+
+const SESSION_KEY = 'vp_session';
+let sessionTimer  = null;
+
+/**
+ * 현재 작업 상태를 임시 보관 (subscribe로 상태가 바뀔 때마다 호출)
+ * 슬라이더처럼 연속으로 바뀌는 경우를 위해 0.3초 모아서 한 번만 기록
+ * @param {object} s - state
+ * @param {boolean} immediate - true면 기다리지 않고 바로 기록 (페이지를 떠날 때)
+ */
+export function saveSession(s, immediate = false) {
+  clearTimeout(sessionTimer);
+  if (immediate) writeSession(s);
+  else sessionTimer = setTimeout(() => writeSession(s), 300);
+}
+
+function writeSession(s) {
+  /* 작업 중인 팔레트가 없으면(홈 화면) 보관분 삭제 */
+  if (!s.palette.length || !s.roles) {
+    sessionStorage.removeItem(SESSION_KEY);
+    return;
+  }
+
+  const data = {
+    previewImage:    s.previewImage,
+    candidateColors: s.candidateColors,
+    palette:         s.palette,
+    myPicks:         [...s.myPicks],
+    roles:           s.roles,
+    contrastOffset:  s.contrastOffset,
+    mode:            s.mode,
+    loadedCardKey:   s.loadedCardKey,
+    isDirty:         s.isDirty,
+    paletteHistory:  s.paletteHistory,
+  };
+
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
+  } catch {
+    /* 용량 초과: 사진은 포기하고 팔레트만이라도 보관 */
+    try {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...data, previewImage: null }));
+    } catch { /* 보관 실패 — 앱 동작에는 영향 없음 */ }
+  }
+}
+
+/**
+ * 임시 보관해 둔 작업 상태를 읽음 (없으면 null)
+ */
+export function loadSession() {
+  try {
+    return JSON.parse(sessionStorage.getItem(SESSION_KEY));
+  } catch {
+    return null;
+  }
 }
 
 /* =========================================================

@@ -3,14 +3,14 @@
    5색 중 글자가 잘 읽히는 조합으로 배경·글자·메인·포인트·보조 배정
    ========================================================== */
 
-import { contrastRatio, luminance, makeLightBg, makeDarkBg } from './color.js';
+import { contrastRatio, luminance, hexToRgb, makeLightBg, makeDarkBg, adjustContrast } from './color.js';
 
 /**
  * 5색 팔레트에서 역할을 자동으로 배정
  * 배정 기준:
- * 1. 가장 밝은 색 → 라이트 배경 기반색 (실제 배경은 makeLightBg로 파생)
+ * 1. 가장 밝은 색 → 라이트 배경 기반색 (실제 배경은 makeLightBg로 파생, 다른 역할에는 안 씀)
  * 2. 가장 어두운 색 → 글자 (배경과의 대비 확인)
- * 3. 나머지 3색 → 메인, 포인트, 보조 (명도 내림차순)
+ * 3. 나머지 색 → 메인, 포인트, 보조 (배경 위에서 보이는 색 중 선명한 순)
  * @param {string[]} palette - HEX 문자열 5개 배열
  * @returns {{ bg: string, text: string, main: string, point: string, sub: string,
  *             bgDark: string, textDark: string }}
@@ -49,13 +49,29 @@ export function assignRoles(palette) {
     textDark = '#F5F5F5';
   }
 
-  /* 나머지 색 중 메인·포인트·보조 배정 (명도 내림차순) */
-  const rest = sorted.filter((c, i) => i !== textIdx);
-  const main  = rest[0] ?? palette[0];
-  const point = rest[1] ?? palette[1];
-  const sub   = rest[2] ?? palette[2];
+  /* 나머지 3색을 메인·포인트·보조에 하나씩 배정
+     (가장 밝은 색은 배경의 바탕이 됐으므로 제외 → 5색이 역할 5개에 빠짐없이 쓰임)
+     - 메인: 배경 위에서 눈에 띄어야 하므로(대비 3:1 이상) 그중 가장 선명한 색
+     - 포인트: 남은 색 중 가장 선명한 색 (배경과 거의 같은 색은 뒤로)
+     - 보조: 그다음 색 */
+  const rest = sorted.filter((c, i) => i !== 0 && i !== textIdx);
+  const byVividness = (minContrast) => (a, b) => {
+    const okA = contrastRatio(a, bg) >= minContrast;
+    const okB = contrastRatio(b, bg) >= minContrast;
+    if (okA !== okB) return okA ? -1 : 1;
+    return chroma(b) - chroma(a);
+  };
 
-  return { bg, text, main, point, sub, bgDark, textDark };
+  const main = [...rest].sort(byVividness(3))[0] ?? palette[0];
+  const [point, sub] = rest.filter((c) => c !== main).sort(byVividness(1.5));
+
+  return { bg, text, main, point: point ?? main, sub: sub ?? main, bgDark, textDark };
+}
+
+/** 색의 선명도(0~1): RGB 최댓값과 최솟값의 차이 */
+function chroma(hex) {
+  const rgb = hexToRgb(hex);
+  return (Math.max(...rgb) - Math.min(...rgb)) / 255;
 }
 
 /**
@@ -85,6 +101,26 @@ export function shuffleRoles(palette) {
   const sub      = shuffled[4] ?? shuffled[0];
 
   return { bg, text, main, point, sub, bgDark, textDark };
+}
+
+/**
+ * 역할별 색에 대비 슬라이더 값을 적용한 표시용 roles 반환
+ * - 원본 roles는 변경하지 않음
+ * - bg / bgDark 는 건드리지 않음 — 팔레트 색조 기반 화이트/블랙으로 고정
+ * @param {object|null} roles
+ * @param {number} offset - 대비 슬라이더 값 (-30~30)
+ */
+export function applyContrastToRoles(roles, offset) {
+  if (!roles || offset === 0) return roles;
+  return {
+    bg:       roles.bg,       /* 배경은 고정 */
+    bgDark:   roles.bgDark,   /* 다크 배경도 고정 */
+    text:     adjustContrast(roles.text,     offset),
+    main:     adjustContrast(roles.main,     offset),
+    point:    adjustContrast(roles.point,    offset),
+    sub:      adjustContrast(roles.sub,      offset),
+    textDark: adjustContrast(roles.textDark, offset),
+  };
 }
 
 /**

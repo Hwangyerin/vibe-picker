@@ -136,16 +136,6 @@ button:focus-visible {
   100% { opacity: 0; }
 }
 
-/* ---------- 섹션 제목 ---------- */
-.section-title {
-  font-size: 0.8125rem;    /* 13px */
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-  margin-bottom: var(--space-md);
-}
-
 /* ---------- 숨김 유틸리티 ---------- */
 /* hidden 속성이 붙은 요소를 flex로 보여줄 때도 대응 */
 [hidden] {

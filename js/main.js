@@ -4,18 +4,25 @@
    ========================================================== */
 
 import { state, setState, subscribe } from './state.js';
-import { initUpload, setOnImageLoaded }            from './upload.js';
+import { initUpload, setOnImageLoaded,
+         restoreImage }                            from './upload.js';
 import { extractColors, pickDistinct }             from './extract.js';
-import { adjustLightness, adjustContrast }          from './color.js';
-import { assignRoles, shuffleRoles, readabilityWarning } from './roles.js';
+import { assignRoles, shuffleRoles, readabilityWarning,
+         applyContrastToRoles }                    from './roles.js';
 import { renderChips, initEyedropperOverlay,
          setOnEyedropperPick, setOnMyPickRemove,
          deactivateEyedropper } from './chips.js';
 import { renderMockups, applyMode }                from './mockups.js';
-import { initPrompt, showPromptSection, setActiveTab } from './prompt.js';
+import { initPrompt, showPromptSection, setActiveTab,
+         closePromptModal }                        from './prompt.js';
 import { initSaveButton, initDrawer,
          setOnCardLoaded, onStateChange,
-         renderHomePalettes }                      from './storage.js';
+         renderHomePalettes, closeDrawer,
+         saveSession, loadSession }                from './storage.js';
+
+/* 작업 화면일 때 주소 뒤에 붙는 표시 — 브라우저 뒤로가기로 홈에 돌아올 수 있게 함 */
+const WORK_HASH = '#work';
+const HOME_URL  = location.pathname + location.search;
 
 /* ==========================================================
    초기화
@@ -24,6 +31,9 @@ import { initSaveButton, initDrawer,
 document.addEventListener('DOMContentLoaded', () => {
   /* 상태 변경 감지 → 저장 버튼 활성화 */
   subscribe(onStateChange);
+
+  /* 상태 변경 감지 → 작업 중인 화면 임시 보관 (새로고침 대비) */
+  subscribe((s) => saveSession(s));
 
   /* 사진 올리기 모듈 초기화 */
   initUpload();
@@ -35,8 +45,20 @@ document.addEventListener('DOMContentLoaded', () => {
   setOnMyPickRemove(handleMyPickRemove);
 
   /* 홈 버튼 (앱 타이틀 클릭 → 초기 화면으로 리셋) */
-  document.getElementById('app-title')
-    .addEventListener('click', handleHomeClick);
+  const appTitle = document.getElementById('app-title');
+  appTitle.addEventListener('click', handleHomeClick);
+  /* 키보드로도 누를 수 있게 (Enter / Space) */
+  appTitle.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    handleHomeClick();
+  });
+
+  /* Esc: 프롬프트 모달 → 서랍 → 스포이드 순으로 열려 있는 것 하나를 닫음 */
+  document.addEventListener('keydown', handleEscape);
+
+  /* 브라우저 뒤로가기·앞으로가기 */
+  window.addEventListener('popstate', handlePopState);
 
   /* 다시 뽑기 버튼 */
   document.getElementById('btn-repick')
@@ -81,6 +103,9 @@ document.addEventListener('DOMContentLoaded', () => {
   /* 홈 화면 저장된 팔레트 목록 초기 렌더 */
   renderHomePalettes();
 
+  /* 새로고침 전에 하던 작업이 있으면 되살림 */
+  restoreSession();
+
   /* 저장 안 된 작업이 있을 때 탭 닫기·새로고침 시 경고 */
   window.addEventListener('beforeunload', (e) => {
     if (state.isDirty) {
@@ -88,6 +113,9 @@ document.addEventListener('DOMContentLoaded', () => {
       e.returnValue = '';
     }
   });
+
+  /* 페이지를 떠나기 직전 상태를 바로 기록 (0.3초 대기 중인 변경까지 포함) */
+  window.addEventListener('pagehide', () => saveSession(state, true));
 
   console.log('VibePicker 초기화 완료');
 });
@@ -163,7 +191,7 @@ function updateUI() {
   showPromptSection();
 
   /* 가독성 경고 */
-  updateWarning(displayRoles.text, displayRoles.bg);
+  updateWarning(displayRoles);
 }
 
 /**
@@ -179,27 +207,23 @@ function renderRolesBadges(roles) {
     ['보조', roles.sub],
   ];
   container.innerHTML = labels.map(([label, hex]) => `
-    <div style="
-      display:inline-flex;align-items:center;gap:6px;
-      padding:4px 10px;border-radius:99px;
-      border:1px solid #e0e0e0;font-size:12px;
-    ">
-      <span style="
-        width:12px;height:12px;border-radius:50%;
-        background:${hex};border:1px solid rgba(0,0,0,0.1);
-        display:inline-block;flex-shrink:0;
-      "></span>
-      <span style="color:#666">${label}</span>
-      <span style="font-weight:500">${hex}</span>
+    <div class="role-badge">
+      <span class="role-dot" style="background-color:${hex}"></span>
+      <span class="role-name">${label}</span>
+      <span class="role-hex">${hex}</span>
     </div>
   `).join('');
 }
 
 /**
- * 가독성 경고 업데이트
+ * 가독성 경고 업데이트 — 지금 보고 있는 모드(라이트·다크)의 글자·배경 기준
  */
-function updateWarning(textHex, bgHex) {
-  const { warn, message } = readabilityWarning(textHex, bgHex);
+function updateWarning(roles) {
+  const isDark = state.mode === 'dark';
+  const { warn, message } = readabilityWarning(
+    isDark ? roles.textDark : roles.text,
+    isDark ? roles.bgDark   : roles.bg,
+  );
   const warningEl = document.getElementById('readability-warning');
   const warningText = document.getElementById('warning-text');
 
@@ -252,20 +276,15 @@ function handleRepick() {
 const MAX_HISTORY = 5;
 
 function handleKeep() {
-  const { palette, myPicks, paletteHistory, contrastOffset } = state;
+  const { palette, myPicks, paletteHistory } = state;
   if (!palette.length) return;
 
   const warningEl = document.getElementById('keep-warning');
   const btn       = document.getElementById('btn-keep');
 
-  /* 화면에 보이는 팔레트(슬라이더 적용된 색)를 보관 */
-  const effectivePalette = contrastOffset !== 0
-    ? palette.map((hex) => adjustContrast(hex, contrastOffset))
-    : [...palette];
-
   /* 이미 같은 팔레트가 보관되어 있으면 무시 */
   const isDuplicate = paletteHistory.some(
-    (entry) => entry.palette.join() === effectivePalette.join()
+    (entry) => entry.palette.join() === palette.join()
   );
   if (isDuplicate) return;
 
@@ -284,7 +303,8 @@ function handleKeep() {
 
   const newHistory = [
     ...paletteHistory,
-    { palette: effectivePalette, myPicks: [...myPicks] },
+    /* 칩에 보이는 색 그대로 보관 (대비 슬라이더는 목업에만 적용되므로 제외) */
+    { palette: [...palette], myPicks: [...myPicks] },
   ];
   setState({ paletteHistory: newHistory });
   renderPaletteHistory();
@@ -358,32 +378,12 @@ function handleHistoryRemove(idx) {
   renderPaletteHistory();
 }
 
-/** 랜덤 섞기
- * - my pick 없음: 같은 5색에서 역할만 무작위 재배정
- * - my pick 있음: my pick 색은 유지하고 나머지 슬롯에 새 후보색 선택
+/** 랜덤 섞기: 같은 5색 안에서 역할만 무작위 재배정
+ * (색 자체를 바꾸는 건 "다시 뽑기"의 몫 — my pick 유무와 상관없이 동작이 같음)
  */
 function handleShuffle() {
-  const { palette, myPicks } = state;
-
-  if (myPicks.size > 0 && state.image) {
-    const myPickColors = new Set([...myPicks].map((i) => palette[i]));
-    const freshCandidates = extractColors(state.image);
-    setState({ candidateColors: freshCandidates });
-    const newPalette = pickDistinct(freshCandidates, myPickColors, 5);
-
-    const newMyPicks = new Set();
-    [...myPickColors].forEach((hex) => {
-      const idx = newPalette.indexOf(hex);
-      if (idx !== -1) newMyPicks.add(idx);
-    });
-
-    const roles = assignRoles(newPalette);
-    setState({ palette: newPalette, myPicks: newMyPicks, roles, isDirty: true });
-  } else {
-    const roles = shuffleRoles(palette);
-    setState({ roles, isDirty: true });
-  }
-
+  const roles = shuffleRoles(state.palette);
+  setState({ roles, isDirty: true });
   updateUI();
 }
 
@@ -397,7 +397,7 @@ function handleContrastReset() {
   renderChips(state.palette, state.myPicks);
   renderMockups(roles, state.mode);
   renderRolesBadges(roles);
-  updateWarning(roles.text, roles.bg);
+  updateWarning(roles);
 }
 
 /**
@@ -415,23 +415,16 @@ function handleContrastSlider(e) {
   renderChips(state.palette, state.myPicks);
   renderMockups(displayRoles, state.mode);
   renderRolesBadges(displayRoles);
-  updateWarning(displayRoles.text, displayRoles.bg);
+  updateWarning(displayRoles);
 }
 
 /** 라이트·다크 전환 */
 function handleModeChange(mode) {
   setState({ mode, isDirty: true });
-
-  document.getElementById('btn-light').classList.toggle('active', mode === 'light');
-  document.getElementById('btn-dark').classList.toggle('active', mode === 'dark');
-
+  syncModeButtons(mode);
   applyMode(mode);
 
-  const displayRoles = applyContrastToRoles(state.roles, state.contrastOffset);
-  updateWarning(
-    mode === 'dark' ? displayRoles.textDark : displayRoles.text,
-    mode === 'dark' ? displayRoles.bgDark   : displayRoles.bg,
-  );
+  updateWarning(applyContrastToRoles(state.roles, state.contrastOffset));
 }
 
 /**
@@ -448,7 +441,6 @@ function handleCardLoaded(card, key) {
 
   setState({
     image:          null,
-    thumbnail:      null,
     previewImage:   null,
     palette:        card.palette,
     myPicks:        new Set(card.myPicks ?? []),
@@ -463,10 +455,11 @@ function handleCardLoaded(card, key) {
   /* 히스토리 DOM 비우기 */
   renderPaletteHistory();
 
+  /* 대비 슬라이더 위치 복원 */
+  document.getElementById('contrast-slider').value = offset;
+
   /* 라이트·다크 버튼 상태 복원 */
-  const mode = card.mode ?? 'light';
-  document.getElementById('btn-light').classList.toggle('active', mode === 'light');
-  document.getElementById('btn-dark').classList.toggle('active', mode === 'dark');
+  syncModeButtons(card.mode ?? 'light');
 
   /* 워크스페이스 전환 + 읽기 전용 (이미지 없음, 편집 버튼 숨김) */
   showWorkspace();
@@ -481,36 +474,24 @@ function handleCardLoaded(card, key) {
  * - true : 서랍에서 불러온 상태 — 업로드·편집 버튼 모두 숨김
  * - false: 사진 업로드 후 정상 편집 상태
  */
-/**
- * 역할별 색에 대비 오프셋을 적용한 표시용 roles 반환
- * state.roles는 변경하지 않음
- */
-/**
- * 역할별 색에 대비 오프셋을 적용한 표시용 roles 반환
- * bg / bgDark 는 건드리지 않음 — 팔레트 색조 기반 화이트/블랙으로 고정
- */
-function applyContrastToRoles(roles, offset) {
-  if (!roles || offset === 0) return roles;
-  return {
-    bg:       roles.bg,       /* 배경은 고정 */
-    bgDark:   roles.bgDark,   /* 다크 배경도 고정 */
-    text:     adjustContrast(roles.text,     offset),
-    main:     adjustContrast(roles.main,     offset),
-    point:    adjustContrast(roles.point,    offset),
-    sub:      adjustContrast(roles.sub,      offset),
-    textDark: adjustContrast(roles.textDark, offset),
-  };
-}
-
 function setReadonlyView(readonly) {
   document.getElementById('repick-row').hidden      = readonly;
   document.getElementById('palette-history').hidden = readonly;
+}
+
+/** 라이트·다크 버튼의 눌린 표시를 현재 모드에 맞춤 */
+function syncModeButtons(mode) {
+  document.getElementById('btn-light').classList.toggle('active', mode === 'light');
+  document.getElementById('btn-dark').classList.toggle('active', mode === 'dark');
 }
 
 /** 워크스페이스 화면으로 전환 (홈 화면 숨김) */
 function showWorkspace() {
   document.getElementById('home-screen').hidden = true;
   document.getElementById('workspace').hidden   = false;
+
+  /* 방문 기록에 작업 화면을 한 칸 추가 → 뒤로가기를 누르면 홈으로 */
+  if (location.hash !== WORK_HASH) history.pushState(null, '', WORK_HASH);
 }
 
 /** 홈 화면으로 전환 (워크스페이스 숨김) */
@@ -602,13 +583,109 @@ function handleMyPickRemove(chipIdx) {
 }
 
 /**
- * 홈 버튼 클릭 → 초기 화면으로 완전 리셋
+ * 저장 안 된 작업이 있으면 홈으로 가도 되는지 확인 (카드 불러오기와 같은 방식)
+ * @returns {boolean} 가도 되면 true
  */
+function confirmLeaveWorkspace() {
+  if (!state.isDirty) return true;
+  return window.confirm(
+    '저장하지 않은 작업이 있어요.\n처음 화면으로 가면 현재 작업이 사라집니다. 계속할까요?'
+  );
+}
+
+/** 홈 버튼(앱 타이틀) 클릭 */
 function handleHomeClick() {
+  if (!confirmLeaveWorkspace()) return;
+  resetToHome();
+  /* 주소의 작업 화면 표시 제거 */
+  if (location.hash === WORK_HASH) history.replaceState(null, '', HOME_URL);
+}
+
+/**
+ * 브라우저 뒤로가기·앞으로가기
+ * - 작업 화면에서 뒤로가기 → 홈으로 (저장 안 된 작업이 있으면 확인)
+ * - 홈에서 앞으로가기 → 되살릴 작업이 없으므로 홈에 머무름
+ */
+function handlePopState() {
+  const inWorkspace = !document.getElementById('workspace').hidden;
+
+  if (location.hash === WORK_HASH) {
+    if (!inWorkspace) history.replaceState(null, '', HOME_URL);
+    return;
+  }
+  if (!inWorkspace) return;
+
+  if (!confirmLeaveWorkspace()) {
+    /* 취소: 작업 화면에 그대로 — 방금 빠져나온 기록을 다시 채움 */
+    history.pushState(null, '', WORK_HASH);
+    return;
+  }
+  resetToHome();
+}
+
+/** Esc: 프롬프트 모달 → 서랍 → 스포이드 순으로 열려 있는 것 하나를 닫음 */
+function handleEscape(e) {
+  if (e.key !== 'Escape') return;
+
+  if (!document.getElementById('prompt-modal').hidden) {
+    closePromptModal();
+  } else if (!document.getElementById('drawer-panel').hidden) {
+    closeDrawer();
+  } else {
+    deactivateEyedropper();
+  }
+}
+
+/**
+ * 새로고침 전에 하던 작업을 되살림 (storage.js가 sessionStorage에 보관해 둔 상태)
+ * - 사진을 올려 작업하던 중이었으면 사진까지, 서랍 카드를 보던 중이었으면 읽기 전용으로
+ */
+function restoreSession() {
+  const saved = loadSession();
+
+  if (!saved?.palette?.length || !saved.roles) {
+    /* 되살릴 작업이 없는데 주소만 작업 화면이면 홈 주소로 정리 */
+    if (location.hash === WORK_HASH) history.replaceState(null, '', HOME_URL);
+    return;
+  }
+
+  const apply = (img) => {
+    setState({
+      image:           img,
+      previewImage:    img ? saved.previewImage : null,
+      candidateColors: saved.candidateColors ?? [],
+      palette:         saved.palette,
+      myPicks:         new Set(saved.myPicks ?? []),
+      roles:           saved.roles,
+      contrastOffset:  saved.contrastOffset ?? 0,
+      mode:            saved.mode ?? 'light',
+      loadedCardKey:   saved.loadedCardKey ?? null,
+      paletteHistory:  saved.paletteHistory ?? [],
+      isDirty:         Boolean(saved.isDirty),
+    });
+
+    document.getElementById('contrast-slider').value = state.contrastOffset;
+    syncModeButtons(state.mode);
+
+    showWorkspace();
+    document.getElementById('image-display').hidden = !img;
+    setReadonlyView(!img);   /* 사진이 없으면 서랍 카드처럼 읽기 전용 */
+    renderPaletteHistory();
+    updateUI();
+  };
+
+  if (saved.previewImage) restoreImage(saved.previewImage, apply);
+  else apply(null);
+}
+
+/**
+ * 초기 화면으로 완전 리셋
+ */
+function resetToHome() {
   /* 상태 초기화 */
   setState({
     image: null,
-    thumbnail: null,
+    previewImage: null,
     candidateColors: [],
     palette: [],
     myPicks: new Set(),
@@ -634,8 +711,7 @@ function handleHomeClick() {
 
   /* 슬라이더·모드 버튼 리셋 */
   document.getElementById('contrast-slider').value = 0;
-  document.getElementById('btn-light').classList.add('active');
-  document.getElementById('btn-dark').classList.remove('active');
+  syncModeButtons('light');
 
   /* 히스토리 카드 DOM 비우기 + 보관 경고 숨김 */
   const historyEl = document.getElementById('palette-history');

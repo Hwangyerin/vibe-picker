@@ -111,12 +111,6 @@
       <div class="workspace-right">
 
         <div class="mockup-viewer" id="mockup-viewer">
-          <!-- 가독성 경고 오버레이: 뷰어 안에 absolute로 뜨며 레이아웃에 영향 없음 -->
-          <div class="readability-warning" id="readability-warning" hidden>
-            <span class="warning-icon">⚠</span>
-            <span class="warning-text" id="warning-text">가독성 주의</span>
-          </div>
-
           <!-- 탭 네비게이션 -->
           <div class="mockup-tabs-nav">
             <button class="mockup-tab-btn active" data-tab="slide">슬라이드</button>
@@ -154,16 +148,26 @@
 
           <!-- 웹사이트 탭 -->
           <div class="mockup-tab-pane" id="mockup-pane-web" hidden>
-            <div class="mockup-card mockup-web" id="mockup-web"></div>
+            <div class="mockup-stage">
+              <div class="mockup-card mockup-web" id="mockup-web"></div>
+            </div>
           </div>
 
           <!-- 앱 탭 -->
           <div class="mockup-tab-pane" id="mockup-pane-app" hidden>
-            <div class="mockup-card mockup-app" id="mockup-app"></div>
+            <div class="mockup-stage">
+              <div class="mockup-card mockup-app" id="mockup-app"></div>
+            </div>
           </div>
 
           <!-- 뷰어 하단 고정 컨트롤: 역할 배지 + 대비 + 라이트/다크 -->
           <div class="mockup-viewer-footer" id="mockup-viewer-footer" hidden>
+            <!-- 가독성 경고 오버레이: 푸터 바로 위 좌측에 뜨며 레이아웃에 영향 없음 -->
+            <div class="readability-warning" id="readability-warning" hidden>
+              <span class="warning-icon">⚠</span>
+              <span class="warning-text" id="warning-text">가독성 주의</span>
+            </div>
+
             <!-- 역할 행: 셔플 아이콘 + 역할 배지 5개 -->
             <div class="roles-row">
               <button class="btn-shuffle-icon" id="btn-shuffle" title="역할 무작위 재배정">
@@ -195,9 +199,6 @@
             </div>
           </div>
         </div>
-
-        <!-- AI 프롬프트 복사 -->
-        <!-- prompt-section 제거: 프롬프트 버튼은 탭 네비게이션 안 아이콘으로 이동 -->
 
       </div><!-- /workspace-right -->
 
