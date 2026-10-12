@@ -124,6 +124,21 @@ export function applyContrastToRoles(roles, offset) {
 }
 
 /**
+ * 팔레트 5색에 대비 슬라이더 값을 적용한 표시용 배열 반환
+ * - 역할(글자·메인·포인트·보조)에 쓰인 색만 조정 → 칩·배지·프롬프트의 HEX가 서로 같아짐
+ * - 배경의 바탕이 된 색은 역할 색이 아니므로 그대로 둠
+ * @param {string[]} palette
+ * @param {object|null} roles - 조정 전 원본 roles
+ * @param {number} offset - 대비 슬라이더 값 (-30~30)
+ * @returns {string[]}
+ */
+export function applyContrastToPalette(palette, roles, offset) {
+  if (!roles || !offset) return palette;
+  const used = [roles.text, roles.main, roles.point, roles.sub];
+  return palette.map((hex) => (used.includes(hex) ? adjustContrast(hex, offset) : hex));
+}
+
+/**
  * 글자-배경 조합의 가독성 경고 메시지를 만듦
  * @param {string} text - 글자 HEX
  * @param {string} bg - 배경 HEX

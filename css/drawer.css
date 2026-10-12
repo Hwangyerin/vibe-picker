@@ -79,7 +79,10 @@
 /* ---------- 팔레트 카드 ---------- */
 .palette-card {
   position: relative;
-  height: 44px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding-bottom: var(--space-xs);
   border-radius: var(--radius-md);
   overflow: visible; /* X 버튼이 걸칠 수 있게 */
   cursor: pointer;
@@ -90,17 +93,25 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* 역할 비중 가로 바 — 카드 자체를 꽉 채움 */
+/* 역할 비중 가로 바 */
 .card-color-bar {
   display: flex;
   width: 100%;
-  height: 100%;
+  height: 44px;
   border-radius: var(--radius-md);
   overflow: hidden;
 }
 /* flex 비율은 JS(buildColorBar)에서 style.flex로 직접 지정 */
 .card-bar-block {
   min-width: 0;
+}
+
+/* 저장 날짜 */
+.card-date {
+  padding: 0 2px;
+  font-size: 0.75rem;     /* 12px */
+  line-height: 1.4;
+  color: var(--color-text-sub);
 }
 
 /* 삭제 버튼 */

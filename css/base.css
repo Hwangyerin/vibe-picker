@@ -121,6 +121,14 @@ button:focus-visible {
   border-color: var(--color-accent);
 }
 
+/* 저장 직후 "저장됨" 표시: 비활성이어도 또렷하게 */
+.btn-save.is-saved:disabled {
+  opacity: 1;
+  color: var(--color-text);
+  border-color: var(--color-text);
+  background-color: var(--color-white);
+}
+
 /* ---------- 복사됨 뱃지 ---------- */
 .copied-badge {
   font-size: 0.75rem;      /* 12px */

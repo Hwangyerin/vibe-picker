@@ -4,6 +4,7 @@
    ========================================================== */
 
 import { state, setState } from './state.js';
+import { applyContrastToPalette } from './roles.js';
 
 /* localStorage 키 접두사 */
 const KEY_PREFIX = 'vp_card_';
@@ -22,6 +23,23 @@ const MAX_CARDS  = 20;
 export function initSaveButton() {
   const btn = document.getElementById('btn-save');
   btn.addEventListener('click', saveCurrentCard);
+}
+
+/* "저장됨" 표시를 되돌리는 타이머 */
+let savedLabelTimer = null;
+
+/** 저장 직후 버튼 글자를 1.5초 동안 "저장됨"으로 바꿔 저장됐음을 알림 */
+function flashSaved(btn) {
+  btn.textContent = '✓ 저장됨';
+  btn.classList.add('is-saved');
+  clearTimeout(savedLabelTimer);
+  savedLabelTimer = setTimeout(() => resetSaveLabel(btn), 1500);
+}
+
+function resetSaveLabel(btn) {
+  clearTimeout(savedLabelTimer);
+  btn.textContent = '저장';
+  btn.classList.remove('is-saved');
 }
 
 /**
@@ -64,8 +82,10 @@ function saveCurrentCard() {
   /* 상태 업데이트 */
   setState({ loadedCardKey: key, isDirty: false });
 
-  /* 저장 버튼 비활성화 */
-  document.getElementById('btn-save').disabled = true;
+  /* 저장 버튼 비활성화 + "저장됨" 잠깐 표시 */
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  flashSaved(btn);
 
   /* 서랍 열려있으면 목록 새로고침 */
   if (!document.getElementById('drawer-panel').hidden) {
@@ -149,7 +169,10 @@ function buildColorBar(card, barClass, blockClass) {
   /* 역할별 비중: 배경 · 메인 · 포인트 · 보조 · 글자 순 (배경이 가장 넓고, 글자가 가장 좁음) */
   const ROLE_FLEX = [4, 3, 2, 1.5, 1];
 
-  colorsByRole(card).forEach((hex, i) => {
+  /* 저장할 때 화면에 보이던 색(대비 슬라이더 적용)으로 표시 */
+  const colors = applyContrastToPalette(colorsByRole(card), card.roles, card.contrastOffset);
+
+  colors.forEach((hex, i) => {
     const flex = ROLE_FLEX[i] ?? 1;
     const block = document.createElement('div');
     block.className = blockClass;
@@ -221,7 +244,26 @@ function buildCardEl(key, card) {
   el.appendChild(bar);
   el.appendChild(btnDel);
 
+  /* 저장 날짜 (예: 10월 12일 오후 9:14) */
+  if (card.savedAt) {
+    const date = document.createElement('span');
+    date.className = 'card-date';
+    date.textContent = formatSavedAt(card.savedAt);
+    el.appendChild(date);
+  }
+
   return el;
+}
+
+/**
+ * 저장 시각을 "10월 12일 오후 9:14" 형태로 표시
+ * @param {number} savedAt - Date.now() 값
+ */
+function formatSavedAt(savedAt) {
+  const date = new Date(savedAt);
+  const day  = date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
+  const time = date.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
+  return `${day} ${time}`;
 }
 
 /* =========================================================
@@ -257,7 +299,9 @@ export function renderHomePalettes() {
 
     const el = document.createElement('button');
     el.className = 'home-palette-card';
-    el.title = '이 팔레트 불러오기';
+    el.title = card.savedAt
+      ? `이 팔레트 불러오기 · ${formatSavedAt(card.savedAt)} 저장`
+      : '이 팔레트 불러오기';
 
     /* 역할 비중 가로 바 */
     const bar = buildColorBar(card, 'home-palette-bar', 'home-palette-block');
@@ -407,4 +451,6 @@ export function onStateChange(newState) {
   const btn = document.getElementById('btn-save');
   if (!btn) return;
   btn.disabled = !newState.isDirty;
+  /* 저장 직후 다시 바꾸기 시작하면 "저장됨" 표시를 바로 거둠 */
+  if (newState.isDirty && btn.classList.contains('is-saved')) resetSaveLabel(btn);
 }

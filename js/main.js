@@ -8,7 +8,7 @@ import { initUpload, setOnImageLoaded,
          restoreImage }                            from './upload.js';
 import { extractColors, pickDistinct }             from './extract.js';
 import { assignRoles, shuffleRoles, readabilityWarning,
-         applyContrastToRoles }                    from './roles.js';
+         applyContrastToRoles, applyContrastToPalette } from './roles.js';
 import { renderChips, initEyedropperOverlay,
          setOnEyedropperPick, setOnMyPickRemove,
          deactivateEyedropper } from './chips.js';
@@ -166,16 +166,14 @@ function handleImageLoaded(img) {
  * - 대비 슬라이더 오프셋이 있으면 칩 표시에도 반영
  */
 function updateUI() {
-  const { palette, myPicks, roles, mode, contrastOffset } = state;
+  const { roles, mode, contrastOffset } = state;
 
-  /* 칩은 원본 팔레트 그대로 표시 — 대비 조정은 목업(역할)에만 반영 */
-  const displayPalette = palette;
   const displayRoles = contrastOffset !== 0
     ? applyContrastToRoles(roles, contrastOffset)
     : roles;
 
-  /* 칩 렌더링 */
-  renderChips(displayPalette, myPicks);
+  /* 칩 렌더링 (대비 슬라이더가 적용된 색) */
+  renderCurrentChips();
 
   /* 칩 섹션 표시 (tools-section은 setReadonlyView가 제어) */
   document.getElementById('chips-section').hidden = false;
@@ -194,6 +192,18 @@ function updateUI() {
 
   /* 가독성 경고 */
   updateWarning(displayRoles);
+}
+
+/**
+ * 현재 팔레트를 칩으로 그림
+ * - state.palette는 원본을 유지하고, 화면에는 대비 슬라이더가 적용된 색을 보여줌
+ *   → 칩에서 복사한 HEX와 배지·프롬프트의 HEX가 항상 같음
+ * - 조정된 상태면 칩 아래에 안내 문구 표시
+ */
+function renderCurrentChips() {
+  const { palette, myPicks, roles, contrastOffset } = state;
+  renderChips(applyContrastToPalette(palette, roles, contrastOffset), myPicks);
+  document.getElementById('chips-note').hidden = contrastOffset === 0;
 }
 
 /**
@@ -278,15 +288,18 @@ function handleRepick() {
 const MAX_HISTORY = 5;
 
 function handleKeep() {
-  const { palette, myPicks, paletteHistory } = state;
+  const { palette, myPicks, roles, contrastOffset, paletteHistory } = state;
   if (!palette.length) return;
 
   const warningEl = document.getElementById('keep-warning');
   const btn       = document.getElementById('btn-keep');
 
-  /* 이미 같은 팔레트가 보관되어 있으면 무시 */
+  /* 지금 화면 그대로 되돌릴 수 있게 원본 색 + 역할 + 대비 값을 함께 보관 */
+  const entry = { palette: [...palette], myPicks: [...myPicks], roles, contrastOffset };
+
+  /* 이미 똑같은 시안이 보관되어 있으면 무시 */
   const isDuplicate = paletteHistory.some(
-    (entry) => entry.palette.join() === palette.join()
+    (kept) => JSON.stringify(kept) === JSON.stringify(entry)
   );
   if (isDuplicate) return;
 
@@ -303,12 +316,7 @@ function handleKeep() {
   /* 저장 성공 시 경고 숨김 */
   warningEl.hidden = true;
 
-  const newHistory = [
-    ...paletteHistory,
-    /* 칩에 보이는 색 그대로 보관 (대비 슬라이더는 목업에만 적용되므로 제외) */
-    { palette: [...palette], myPicks: [...myPicks] },
-  ];
-  setState({ paletteHistory: newHistory });
+  setState({ paletteHistory: [...paletteHistory, entry] });
   renderPaletteHistory();
 }
 
@@ -334,7 +342,8 @@ function renderPaletteHistory() {
     /* 5색 블록 (패딩 없이 가로로 꽉 채움) */
     const colors = document.createElement('div');
     colors.className = 'history-card-colors';
-    entry.palette.forEach((hex) => {
+    /* 보관할 때 칩에 보이던 색(대비 적용)으로 표시 */
+    applyContrastToPalette(entry.palette, entry.roles, entry.contrastOffset).forEach((hex) => {
       const block = document.createElement('div');
       block.className = 'history-color-block';
       block.style.backgroundColor = hex;
@@ -366,10 +375,16 @@ function handleHistoryRestore(idx) {
   const entry = state.paletteHistory[idx];
   if (!entry) return;
 
-  const myPicks = new Set(entry.myPicks);
-  const roles = assignRoles(entry.palette);
-  setState({ palette: entry.palette, myPicks, roles, contrastOffset: 0, isDirty: true });
-  document.getElementById('contrast-slider').value = 0;
+  /* 보관할 때의 역할 배치와 대비 값까지 그대로 복원 */
+  const contrastOffset = entry.contrastOffset ?? 0;
+  setState({
+    palette:  entry.palette,
+    myPicks:  new Set(entry.myPicks),
+    roles:    entry.roles ?? assignRoles(entry.palette),
+    contrastOffset,
+    isDirty:  true,
+  });
+  document.getElementById('contrast-slider').value = contrastOffset;
   updateUI();
 }
 
@@ -396,7 +411,7 @@ function handleContrastReset() {
 
   /* 역할은 유지, 대비 조정 없이 그대로 표시 */
   const { roles } = state;
-  renderChips(state.palette, state.myPicks);
+  renderCurrentChips();
   renderMockups(roles, state.mode);
   renderRolesBadges(roles);
   updateWarning(roles);
@@ -413,8 +428,7 @@ function handleContrastSlider(e) {
 
   const displayRoles = applyContrastToRoles(state.roles, offset);
 
-  /* 칩은 원본 팔레트 그대로 — 대비 조정은 목업에만 반영 */
-  renderChips(state.palette, state.myPicks);
+  renderCurrentChips();
   renderMockups(displayRoles, state.mode);
   renderRolesBadges(displayRoles);
   updateWarning(displayRoles);
@@ -747,6 +761,7 @@ function resetToHome() {
   const historyEl = document.getElementById('palette-history');
   if (historyEl) historyEl.innerHTML = '';
   document.getElementById('keep-warning').hidden = true;
+  document.getElementById('chips-note').hidden   = true;
 
   /* 읽기 전용 뷰 해제 */
   setReadonlyView(false);

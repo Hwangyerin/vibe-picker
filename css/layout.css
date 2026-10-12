@@ -240,6 +240,13 @@
   gap: var(--space-md);
 }
 
+/* 칩 색이 대비 슬라이더로 조정된 상태임을 알리는 안내 */
+.chips-note {
+  margin-top: calc(-1 * var(--space-sm));
+  font-size: 0.75rem;     /* 12px */
+  color: var(--color-text-sub);
+}
+
 /* 다시 뽑기 + 보관 버튼을 한 줄에 */
 .repick-row {
   display: flex;
