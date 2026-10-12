@@ -139,6 +139,7 @@ const ICONS = {
   lock:     icon('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
   play:     icon('<path d="m8 5 11 7-11 7z"/>'),
   back:     icon('<path d="m15 5-7 7 7 7"/>'),
+  down:     icon('<path d="m6 9 6 6 6-6"/>'),
   forward:  icon('<path d="m9 5 7 7-7 7"/>'),
   reload:   icon('<path d="M20 11a8 8 0 1 0-2.3 6M20 5v6h-6"/>'),
 };
@@ -259,7 +260,11 @@ function buildSlideChart() {
   `;
 }
 
-/** 웹사이트 목업: 브라우저 창 안의 SaaS 랜딩 페이지 (안쪽 스크롤 가능) */
+/**
+ * 웹사이트 목업: 브라우저 창 안의 SaaS 사이트 3페이지 (홈 · 제품 · 요금)
+ * 어느 페이지를 보여줄지는 #mockup-web 의 data-page(0~2)로 정하고 CSS가 전환
+ * → 화살표를 누르면 main.js가 data-page만 바꿈
+ */
 function buildWeb() {
   const columns = [
     ['할 일', 3, [
@@ -281,17 +286,41 @@ function buildWeb() {
     ['lock', '기업용 보안', 'SSO와 감사 로그, 국내 리전 저장을 기본으로 제공합니다.'],
   ];
 
+  /* [이름, 가격, 단위, 설명, 포함 기능, 버튼 문구, 추천 여부] */
+  const plans = [
+    ['스타터', '무료', '', '5명 이하 팀이 가볍게 시작할 때',
+      ['보드 3개', '캘린더 연동', '할 일 무제한', '7일 활동 기록'], '무료로 시작', false],
+    ['팀', '9,000원', '/ 인 · 월', '일정과 회의를 한곳에서 관리할 때',
+      ['보드 무제한', 'AI 회의록 요약', '타임라인 · 간트', '게스트 초대 20명'], '14일 무료 체험', true],
+    ['비즈니스', '19,000원', '/ 인 · 월', '보안과 관리 기능이 필요할 때',
+      ['팀 요금제의 모든 기능', 'SSO · 감사 로그', '국내 리전 저장', '전담 매니저'], '도입 문의', false],
+  ];
+
+  const footer = `
+    <div class="web-footer">
+      <span>© 2026 Planit Inc.</span>
+      <span>이용약관 · 개인정보처리방침 · 고객센터</span>
+    </div>
+  `;
+
   document.getElementById('mockup-web').innerHTML = `
     <div class="mk-canvas web">
       <div class="web-chrome">
         <div class="web-dots"><i></i><i></i><i></i></div>
         <div class="web-chrome-nav">${ICONS.back}${ICONS.forward}${ICONS.reload}</div>
-        <div class="web-url">${ICONS.lock}<span>planit.team</span></div>
+        <div class="web-url">
+          ${ICONS.lock}
+          <span data-view="0">planit.team</span>
+          <span data-view="1">planit.team/product</span>
+          <span data-view="2">planit.team/pricing</span>
+        </div>
       </div>
 
       <div class="web-nav">
         <div class="web-logo"><i></i>Planit</div>
-        <div class="web-links"><span>제품</span><span>솔루션</span><span>요금</span><span>고객 사례</span><span>블로그</span></div>
+        <div class="web-links">
+          <span data-view="1">제품</span><span>솔루션</span><span data-view="2">요금</span><span>고객 사례</span><span>블로그</span>
+        </div>
         <div class="web-nav-actions">
           <span class="web-login">로그인</span>
           <span class="web-btn web-btn-primary web-btn-sm">무료로 시작</span>
@@ -299,76 +328,118 @@ function buildWeb() {
       </div>
 
       <div class="web-page">
-        <div class="web-hero">
-          <div class="web-hero-copy">
-            <div class="web-badge"><i></i>새 기능 · AI 회의록 요약 출시</div>
-            <div class="web-h1">팀의 일정이<br>한 화면에 모이는 곳</div>
-            <div class="web-lead">할 일, 회의, 마감을 따로 관리하지 마세요. Planit은 팀의 한 주를 하나의 보드로 정리해 줍니다.</div>
-            <div class="web-hero-actions">
-              <span class="web-btn web-btn-primary">14일 무료 체험</span>
-              <span class="web-btn web-btn-ghost">${ICONS.play}2분 데모 보기</span>
+
+        <!-- 1페이지: 홈 -->
+        <div class="web-view" data-view="0">
+          <div class="web-hero">
+            <div class="web-hero-copy">
+              <div class="web-badge"><i></i>새 기능 · AI 회의록 요약 출시</div>
+              <div class="web-h1">팀의 일정이<br>한 화면에 모이는 곳</div>
+              <div class="web-lead">할 일, 회의, 마감을 따로 관리하지 마세요. Planit은 팀의 한 주를 하나의 보드로 정리해 줍니다.</div>
+              <div class="web-hero-actions">
+                <span class="web-btn web-btn-primary">14일 무료 체험</span>
+                <span class="web-btn web-btn-ghost">${ICONS.play}2분 데모 보기</span>
+              </div>
+              <div class="web-proof">
+                <div class="web-avatars"><i>지</i><i>민</i><i>서</i><i>+</i></div>
+                <span><b>★ 4.9</b> · 2,300개 팀이 매일 사용합니다</span>
+              </div>
             </div>
-            <div class="web-proof">
-              <div class="web-avatars"><i>지</i><i>민</i><i>서</i><i>+</i></div>
-              <span><b>★ 4.9</b> · 2,300개 팀이 매일 사용합니다</span>
+
+            <div class="web-board">
+              <div class="web-board-head">
+                <b>7월 3주차 스프린트</b>
+                <span class="web-seg"><em class="is-on">보드</em><em>캘린더</em><em>타임라인</em></span>
+              </div>
+              <div class="web-board-cols">
+                ${columns.map(([name, count, tasks]) => `
+                  <div class="web-col">
+                    <div class="web-col-head">${name}<span>${count}</span></div>
+                    ${tasks.map(([title, tag, tone, due]) => `
+                      <div class="web-task">
+                        <span class="web-tag tone-${tone}">${tag}</span>
+                        <div class="web-task-title">${title}</div>
+                        <div class="web-task-meta">${ICONS.calendar}${due}</div>
+                      </div>
+                    `).join('')}
+                  </div>
+                `).join('')}
+              </div>
             </div>
           </div>
 
-          <div class="web-board">
-            <div class="web-board-head">
-              <b>7월 3주차 스프린트</b>
-              <span class="web-board-tabs"><em class="is-on">보드</em><em>캘린더</em><em>타임라인</em></span>
+          <div class="web-logos">
+            <span>함께하는 팀</span>
+            <b>NORDIK</b><b>모아랩</b><b>Fieldnote</b><b>오브제 스튜디오</b><b>LUMEN</b>
+          </div>
+        </div>
+
+        <!-- 2페이지: 제품 -->
+        <div class="web-view" data-view="1">
+          <div class="web-page-head">
+            <div>
+              <div class="web-eyebrow"><i></i>제품</div>
+              <div class="web-h2">회의는 줄이고, 일은 앞으로</div>
+              <div class="web-sub">일정 조율부터 회의록, 후속 작업까지 Planit 하나로 이어집니다.</div>
             </div>
-            <div class="web-board-cols">
-              ${columns.map(([name, count, tasks]) => `
-                <div class="web-col">
-                  <div class="web-col-head">${name}<span>${count}</span></div>
-                  ${tasks.map(([title, tag, tone, due]) => `
-                    <div class="web-task">
-                      <span class="web-tag tone-${tone}">${tag}</span>
-                      <div class="web-task-title">${title}</div>
-                      <div class="web-task-meta">${ICONS.calendar}${due}</div>
-                    </div>
-                  `).join('')}
+          </div>
+
+          <div class="web-features">
+            ${features.map(([name, title, desc]) => `
+              <div class="web-feature">
+                <div class="web-feature-icon">${ICONS[name]}</div>
+                <div class="web-feature-title">${title}</div>
+                <div class="web-feature-desc">${desc}</div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="web-cta">
+            <div>
+              <div class="web-cta-title">이번 주 회의부터 줄여 보세요</div>
+              <div class="web-cta-desc">카드 등록 없이 5분이면 팀 보드가 만들어집니다.</div>
+            </div>
+            <span class="web-btn web-btn-invert">무료로 시작하기</span>
+          </div>
+          ${footer}
+        </div>
+
+        <!-- 3페이지: 요금 -->
+        <div class="web-view" data-view="2">
+          <div class="web-page-head">
+            <div>
+              <div class="web-eyebrow"><i></i>요금</div>
+              <div class="web-h2">팀 크기에 맞는 요금제</div>
+              <div class="web-sub">모든 요금제는 14일 동안 무료로 써 볼 수 있습니다.</div>
+            </div>
+            <span class="web-seg"><em>월간 결제</em><em class="is-on">연간 결제 −20%</em></span>
+          </div>
+
+          <div class="web-plans">
+            ${plans.map(([name, price, unit, desc, items, cta, best]) => `
+              <div class="web-plan${best ? ' is-best' : ''}">
+                <div class="web-plan-name">${name}${best ? '<span class="web-plan-badge">가장 인기</span>' : ''}</div>
+                <div class="web-plan-price">${price}<small>${unit}</small></div>
+                <div class="web-plan-desc">${desc}</div>
+                <div class="web-plan-list">
+                  ${items.map((item) => `<div>${ICONS.check}${item}</div>`).join('')}
                 </div>
-              `).join('')}
-            </div>
+                <span class="web-btn ${best ? 'web-btn-invert' : 'web-btn-ghost'}">${cta}</span>
+              </div>
+            `).join('')}
           </div>
+          ${footer}
         </div>
 
-        <div class="web-logos">
-          <span>함께하는 팀</span>
-          <b>NORDIK</b><b>모아랩</b><b>Fieldnote</b><b>오브제 스튜디오</b><b>LUMEN</b>
-        </div>
-
-        <div class="web-features">
-          ${features.map(([name, title, desc]) => `
-            <div class="web-feature">
-              <div class="web-feature-icon">${ICONS[name]}</div>
-              <div class="web-feature-title">${title}</div>
-              <div class="web-feature-desc">${desc}</div>
-            </div>
-          `).join('')}
-        </div>
-
-        <div class="web-cta">
-          <div>
-            <div class="web-cta-title">이번 주 회의부터 줄여 보세요</div>
-            <div class="web-cta-desc">카드 등록 없이 5분이면 팀 보드가 만들어집니다.</div>
-          </div>
-          <span class="web-btn web-btn-invert">무료로 시작하기</span>
-        </div>
-
-        <div class="web-footer">
-          <span>© 2026 Planit Inc.</span>
-          <span>이용약관 · 개인정보처리방침 · 고객센터</span>
-        </div>
       </div>
     </div>
   `;
 }
 
-/** 모바일 앱 목업: 가계부 앱 홈 화면 */
+/**
+ * 모바일 앱 목업: 가계부 앱 3화면 (홈 · 분석 · 카드)
+ * 웹 목업과 같은 방식 — #mockup-app 의 data-page(0~2)에 따라 CSS가 화면과 하단 탭을 전환
+ */
 function buildApp() {
   const actions = [['send', '송금'], ['plus', '충전'], ['swap', '환전'], ['scan', '스캔']];
 
@@ -379,7 +450,32 @@ function buildApp() {
     ['bus',    'main',  '후불 교통카드',   '교통 · 어제',       '−2,800원'],
   ];
 
+  /* [색, 이름, 비율(%), 금액] — 합계 1,284,500원 */
+  const categories = [
+    ['main',  '식비', 38, '488,110원'],
+    ['point', '쇼핑', 24, '308,280원'],
+    ['sub',   '교통', 16, '205,520원'],
+    ['rest',  '기타', 22, '282,590원'],
+  ];
+
+  const upcoming = [
+    ['play', 'point', '음악 스트리밍', '정기 결제 · 7월 17일', '−10,900원'],
+    ['bolt', 'main',  '전기 요금',     '자동 이체 · 7월 20일', '−34,200원'],
+    ['user', 'sub',   '헬스장 회원권', '정기 결제 · 7월 25일', '−59,000원'],
+  ];
+
+  const cardActions = [['lock', '일시 정지'], ['card', '한도 설정'], ['calendar', '명세서']];
+
+  /* 하단 탭 — 앞의 세 개가 화살표로 넘기는 화면과 짝 */
   const tabs = [['home', '홈'], ['chart', '분석'], ['card', '카드'], ['user', '내 정보']];
+
+  const item = ([name, tone, title, meta, amount]) => `
+    <div class="app-item">
+      <div class="app-item-icon tone-${tone}">${ICONS[name]}</div>
+      <div class="app-item-text"><b>${title}</b><span>${meta}</span></div>
+      <div class="app-item-amount${amount.startsWith('+') ? ' is-income' : ''}">${amount}</div>
+    </div>
+  `;
 
   document.getElementById('mockup-app').innerHTML = `
     <div class="mk-canvas app">
@@ -393,48 +489,133 @@ function buildApp() {
           </span>
         </div>
 
-        <div class="app-top">
-          <div>
-            <div class="app-hello">안녕하세요, 서연님</div>
-            <div class="app-date">7월 14일 화요일</div>
-          </div>
-          <div class="app-bell">${ICONS.bell}<i></i></div>
-        </div>
-
-        <div class="app-balance">
-          <div class="app-balance-top">
-            <span>이번 달 지출</span>
-            <span class="app-balance-chip">지난달보다 −12%</span>
-          </div>
-          <div class="app-balance-amount">1,284,500<small>원</small></div>
-          <div class="app-progress"><i style="width:64%"></i></div>
-          <div class="app-balance-foot"><span>예산 2,000,000원</span><span>64% 사용</span></div>
-        </div>
-
-        <div class="app-actions">
-          ${actions.map(([name, label]) => `
-            <div class="app-action"><div class="app-action-icon">${ICONS[name]}</div>${label}</div>
-          `).join('')}
-        </div>
-
-        <div class="app-section-head"><b>최근 내역</b><span>전체 보기</span></div>
-        <div class="app-history">
-          ${history.map(([name, tone, title, meta, amount]) => `
-            <div class="app-item">
-              <div class="app-item-icon tone-${tone}">${ICONS[name]}</div>
-              <div class="app-item-text"><b>${title}</b><span>${meta}</span></div>
-              <div class="app-item-amount${amount.startsWith('+') ? ' is-income' : ''}">${amount}</div>
+        <!-- 1화면: 홈 -->
+        <div class="app-view" data-view="0">
+          <div class="app-top">
+            <div>
+              <div class="app-hello">안녕하세요, 서연님</div>
+              <div class="app-date">7월 14일 화요일</div>
             </div>
-          `).join('')}
+            <div class="app-bell">${ICONS.bell}<i></i></div>
+          </div>
+
+          <div class="app-balance">
+            <div class="app-balance-top">
+              <span>이번 달 지출</span>
+              <span class="app-balance-chip">지난달보다 −12%</span>
+            </div>
+            <div class="app-balance-amount">1,284,500<small>원</small></div>
+            <div class="app-progress"><i style="width:64%"></i></div>
+            <div class="app-balance-foot"><span>예산 2,000,000원</span><span>64% 사용</span></div>
+          </div>
+
+          <div class="app-actions">
+            ${actions.map(([name, label]) => `
+              <div class="app-action"><div class="app-action-icon">${ICONS[name]}</div>${label}</div>
+            `).join('')}
+          </div>
+
+          <div class="app-section-head"><b>최근 내역</b><span>전체 보기</span></div>
+          <div class="app-history">${history.map(item).join('')}</div>
+        </div>
+
+        <!-- 2화면: 분석 -->
+        <div class="app-view" data-view="1">
+          <div class="app-top">
+            <div>
+              <div class="app-hello">지출 분석</div>
+              <div class="app-date">2026년 7월 1일 – 14일</div>
+            </div>
+            <div class="app-month">7월${ICONS.down}</div>
+          </div>
+
+          <div class="app-donut-card">
+            <div class="app-donut">
+              ${donut(categories.map(([tone, , percent]) => [tone, percent]))}
+              <div class="app-donut-center"><span>총 지출</span><b>1,284,500원</b></div>
+            </div>
+          </div>
+
+          <div class="app-section-head"><b>카테고리별</b><span>금액순</span></div>
+          <div class="app-cats">
+            ${categories.map(([tone, name, percent, amount]) => `
+              <div class="app-cat">
+                <div class="app-cat-row">
+                  <i class="tone-${tone}"></i><b>${name}</b><span>${percent}%</span><em>${amount}</em>
+                </div>
+                <div class="app-cat-bar"><i class="tone-${tone}" style="width:${(percent / 38) * 100}%"></i></div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="app-insight">
+            <div class="app-insight-icon">${ICONS.bolt}</div>
+            <div><b>식비가 지난달보다 8% 줄었어요</b><span>이 속도라면 예산 안에서 한 달을 마칩니다.</span></div>
+          </div>
+        </div>
+
+        <!-- 3화면: 카드 -->
+        <div class="app-view" data-view="2">
+          <div class="app-top">
+            <div>
+              <div class="app-hello">내 카드</div>
+              <div class="app-date">카드 2장 · 이번 달 842,300원</div>
+            </div>
+            <div class="app-bell">${ICONS.plus}</div>
+          </div>
+
+          <div class="app-cards">
+            <div class="app-card-back"></div>
+            <div class="app-card-face">
+              <div class="app-card-row"><b>Pocket</b><span>체크카드</span></div>
+              <div class="app-card-chip"></div>
+              <div class="app-card-number">••••&ensp;••••&ensp;••••&ensp;4821</div>
+              <div class="app-card-row app-card-foot"><span>KIM SEOYEON</span><span>08 / 29</span></div>
+            </div>
+          </div>
+
+          <div class="app-limit">
+            <div class="app-limit-row"><span>이번 달 사용</span><b>842,300원</b></div>
+            <div class="app-limit-bar"><i style="width:56%"></i></div>
+            <div class="app-limit-row app-limit-foot"><span>한도 1,500,000원</span><span>56%</span></div>
+          </div>
+
+          <div class="app-pills">
+            ${cardActions.map(([name, label]) => `<div class="app-pill">${ICONS[name]}${label}</div>`).join('')}
+          </div>
+
+          <div class="app-section-head"><b>다가오는 결제</b><span>3건</span></div>
+          <div class="app-history">${upcoming.map(item).join('')}</div>
         </div>
 
         <div class="app-tabbar">
           ${tabs.map(([name, label], i) => `
-            <div class="app-tab${i === 0 ? ' is-on' : ''}">${ICONS[name]}${label}</div>
+            <div class="app-tab" data-view="${i}">${ICONS[name]}${label}</div>
           `).join('')}
         </div>
         <i class="app-home-indicator"></i>
       </div>
     </div>
   `;
+}
+
+/**
+ * 도넛 차트 SVG — 조각마다 원 하나를 그리고 stroke-dasharray로 길이를 정함
+ * @param {[string, number][]} segments - [색 이름, 비율(%)] 배열 (합계 100)
+ */
+function donut(segments) {
+  const RADIUS = 80;
+  const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+  const GAP = 5;   /* 조각 사이 틈 */
+
+  let start = 0;
+  const circles = segments.map(([tone, percent]) => {
+    const length = (percent / 100) * CIRCUMFERENCE;
+    const circle = `<circle class="tone-${tone}" cx="100" cy="100" r="${RADIUS}"
+      stroke-dasharray="${length - GAP} ${CIRCUMFERENCE - length + GAP}" stroke-dashoffset="${-start}"/>`;
+    start += length;
+    return circle;
+  }).join('');
+
+  return `<svg viewBox="0 0 200 200" fill="none" stroke-width="22" stroke-linecap="butt"><g transform="rotate(-90 100 100)">${circles}</g></svg>`;
 }

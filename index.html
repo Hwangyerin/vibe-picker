@@ -45,18 +45,19 @@
           <button class="btn btn-file" id="btn-file">파일 선택</button>
           <input type="file" id="file-input" accept="image/*" hidden />
 
-          <!-- 샘플 사진 3장: 누르면 바로 체험 가능 -->
+          <!-- 샘플 사진 3장: 누르면 바로 체험 가능
+               (미리보기는 작은 thumb 파일, 원본은 눌렀을 때만 불러옴) -->
           <div class="sample-list" id="sample-list">
             <p class="sample-label">샘플로 바로 체험해보기</p>
             <div class="sample-thumbs">
               <button class="sample-thumb" data-index="0" aria-label="샘플 사진 1">
-                <img src="samples/sample1.jpg" alt="샘플 1" />
+                <img src="samples/thumb1.jpg" alt="샘플 1" />
               </button>
               <button class="sample-thumb" data-index="1" aria-label="샘플 사진 2">
-                <img src="samples/sample2.jpg" alt="샘플 2" />
+                <img src="samples/thumb2.jpg" alt="샘플 2" />
               </button>
               <button class="sample-thumb" data-index="2" aria-label="샘플 사진 3">
-                <img src="samples/sample3.jpg" alt="샘플 3" />
+                <img src="samples/thumb3.jpg" alt="샘플 3" />
               </button>
             </div>
           </div>
@@ -139,24 +140,44 @@
             </div>
 
             <!-- 도트 인디케이터 -->
-            <div class="slide-dots">
+            <div class="slide-dots" id="slide-dots">
               <span class="slide-dot active"></span>
               <span class="slide-dot"></span>
               <span class="slide-dot"></span>
             </div>
           </div>
 
-          <!-- 웹사이트 탭 -->
+          <!-- 웹사이트 탭: 슬라이드처럼 화살표로 페이지(홈 · 제품 · 요금) 전환 -->
           <div class="mockup-tab-pane" id="mockup-pane-web" hidden>
-            <div class="mockup-stage">
-              <div class="mockup-card mockup-web" id="mockup-web"></div>
+            <div class="slide-carousel">
+              <button class="slide-nav-btn slide-prev" id="web-prev" aria-label="이전 페이지" hidden></button>
+              <button class="slide-nav-btn slide-next" id="web-next" aria-label="다음 페이지"></button>
+
+              <div class="mockup-card mockup-web" id="mockup-web" data-page="0"></div>
+            </div>
+
+            <!-- 도트 인디케이터 -->
+            <div class="slide-dots" id="web-dots">
+              <span class="slide-dot active"></span>
+              <span class="slide-dot"></span>
+              <span class="slide-dot"></span>
             </div>
           </div>
 
-          <!-- 앱 탭 -->
+          <!-- 앱 탭: 화살표로 화면(홈 · 분석 · 카드) 전환 -->
           <div class="mockup-tab-pane" id="mockup-pane-app" hidden>
-            <div class="mockup-stage">
-              <div class="mockup-card mockup-app" id="mockup-app"></div>
+            <div class="slide-carousel">
+              <button class="slide-nav-btn slide-prev" id="app-prev" aria-label="이전 화면" hidden></button>
+              <button class="slide-nav-btn slide-next" id="app-next" aria-label="다음 화면"></button>
+
+              <div class="mockup-card mockup-app" id="mockup-app" data-page="0"></div>
+            </div>
+
+            <!-- 도트 인디케이터 -->
+            <div class="slide-dots" id="app-dots">
+              <span class="slide-dot active"></span>
+              <span class="slide-dot"></span>
+              <span class="slide-dot"></span>
             </div>
           </div>
 

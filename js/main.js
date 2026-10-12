@@ -97,8 +97,10 @@ document.addEventListener('DOMContentLoaded', () => {
   /* 목업 탭 네비게이션 초기화 */
   initMockupTabs();
 
-  /* 슬라이드 좌우 내비게이션 초기화 */
+  /* 슬라이드·웹·앱 탭 좌우 내비게이션 초기화 */
   initSlideViewer();
+  initPageViewer('web');
+  initPageViewer('app');
 
   /* 홈 화면 저장된 팔레트 목록 초기 렌더 */
   renderHomePalettes();
@@ -522,35 +524,63 @@ function initMockupTabs() {
 }
 
 /**
- * 슬라이드 탭 내 좌우 내비게이션 초기화
- * 한 번에 한 장씩 표시, 도트 + 화살표로 페이지 전환
+ * 화살표 + 점으로 한 장씩 넘기는 뷰어 (슬라이드 탭·웹 탭 공용)
+ * @param {{ prevId: string, nextId: string, dotsId: string, count: number,
+ *           show: (index: number) => void }} options
+ *   - show: index번째 화면만 보이게 만드는 함수
  */
-function initSlideViewer() {
-  const SLIDE_IDS = ['mockup-slide-cover', 'mockup-slide-body', 'mockup-slide-chart'];
+function initCarousel({ prevId, nextId, dotsId, count, show }) {
   let current = 0;
 
-  const prevBtn = document.getElementById('slide-prev');
-  const nextBtn = document.getElementById('slide-next');
-  const dots    = document.querySelectorAll('.slide-dot');
+  const prevBtn = document.getElementById(prevId);
+  const nextBtn = document.getElementById(nextId);
+  const dots    = document.getElementById(dotsId).querySelectorAll('.slide-dot');
 
   function update() {
-    /* 현재 슬라이드만 보이기 */
-    SLIDE_IDS.forEach((id, i) => {
-      document.getElementById(id).hidden = i !== current;
-    });
+    show(current);
 
     /* 도트 활성화 */
     dots.forEach((dot, i) => dot.classList.toggle('active', i === current));
 
     /* 첫 장이면 이전 화살표 숨김, 마지막 장이면 다음 화살표 숨김 */
     prevBtn.hidden = current === 0;
-    nextBtn.hidden = current === SLIDE_IDS.length - 1;
+    nextBtn.hidden = current === count - 1;
   }
 
   prevBtn.addEventListener('click', () => { if (current > 0) { current--; update(); } });
-  nextBtn.addEventListener('click', () => { if (current < SLIDE_IDS.length - 1) { current++; update(); } });
+  nextBtn.addEventListener('click', () => { if (current < count - 1) { current++; update(); } });
 
   update();
+}
+
+/** 슬라이드 탭: 표지 · 본문 · 차트 중 한 장만 표시 */
+function initSlideViewer() {
+  const SLIDE_IDS = ['mockup-slide-cover', 'mockup-slide-body', 'mockup-slide-chart'];
+
+  initCarousel({
+    prevId: 'slide-prev',
+    nextId: 'slide-next',
+    dotsId: 'slide-dots',
+    count:  SLIDE_IDS.length,
+    show:   (index) => SLIDE_IDS.forEach((id, i) => {
+      document.getElementById(id).hidden = i !== index;
+    }),
+  });
+}
+
+/**
+ * 웹 탭(홈 · 제품 · 요금)·앱 탭(홈 · 분석 · 카드): 한 목업 안에서 화면 전환
+ * 실제 표시는 mockups.css가 카드의 data-page 값으로 처리
+ * @param {'web'|'app'} name
+ */
+function initPageViewer(name) {
+  initCarousel({
+    prevId: `${name}-prev`,
+    nextId: `${name}-next`,
+    dotsId: `${name}-dots`,
+    count:  3,
+    show:   (index) => { document.getElementById(`mockup-${name}`).dataset.page = index; },
+  });
 }
 
 /** 스포이드로 색 선택됐을 때 */
