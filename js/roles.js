@@ -3,7 +3,7 @@
    5색 중 글자가 잘 읽히는 조합으로 배경·글자·메인·포인트·보조 배정
    ========================================================== */
 
-import { contrastRatio, luminance, hexToRgb, makeLightBg, makeDarkBg, adjustContrast } from './color.js';
+import { contrastRatio, luminance, hexToRgb, makeLightBg, makeDarkBg, adjustContrast, liftForDark } from './color.js';
 
 /**
  * 5색 팔레트에서 역할을 자동으로 배정
@@ -120,6 +120,25 @@ export function applyContrastToRoles(roles, offset) {
     point:    adjustContrast(roles.point,    offset),
     sub:      adjustContrast(roles.sub,      offset),
     textDark: adjustContrast(roles.textDark, offset),
+  };
+}
+
+/**
+ * 지금 보고 있는 모드에서 실제로 화면에 쓰이는 역할 색 반환
+ * - 다크: 배경·글자는 다크용 색, 메인·포인트·보조는 어두운 배경에 묻히면 밝기만 올린 색
+ *   (목업·프롬프트의 다크 모드 색과 같은 값)
+ * @param {object} roles - 대비 슬라이더가 적용된 표시용 roles
+ * @param {'light'|'dark'} mode
+ * @returns {{ bg: string, text: string, main: string, point: string, sub: string }}
+ */
+export function rolesForMode(roles, mode) {
+  if (mode !== 'dark') return roles;
+  return {
+    bg:    roles.bgDark,
+    text:  roles.textDark,
+    main:  liftForDark(roles.main,  roles.bgDark),
+    point: liftForDark(roles.point, roles.bgDark),
+    sub:   liftForDark(roles.sub,   roles.bgDark),
   };
 }
 

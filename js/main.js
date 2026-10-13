@@ -8,7 +8,7 @@ import { initUpload, setOnImageLoaded,
          restoreImage }                            from './upload.js';
 import { extractColors, pickDistinct }             from './extract.js';
 import { assignRoles, shuffleRoles, readabilityWarning,
-         applyContrastToRoles, applyContrastToPalette } from './roles.js';
+         applyContrastToRoles, applyContrastToPalette, rolesForMode } from './roles.js';
 import { renderChips, initEyedropperOverlay,
          setOnEyedropperPick, setOnMyPickRemove,
          deactivateEyedropper } from './chips.js';
@@ -208,8 +208,10 @@ function renderCurrentChips() {
 
 /**
  * 역할별 색 배지를 #roles-display 안에 표시
+ * - 지금 보고 있는 모드(라이트·다크)에서 실제로 쓰이는 색을 보여줌
  */
-function renderRolesBadges(roles) {
+function renderRolesBadges(displayRoles) {
+  const roles = rolesForMode(displayRoles, state.mode);
   const container = document.getElementById('roles-display');
   const labels = [
     ['배경', roles.bg],
@@ -440,7 +442,9 @@ function handleModeChange(mode) {
   syncModeButtons(mode);
   applyMode(mode);
 
-  updateWarning(applyContrastToRoles(state.roles, state.contrastOffset));
+  const displayRoles = applyContrastToRoles(state.roles, state.contrastOffset);
+  renderRolesBadges(displayRoles);
+  updateWarning(displayRoles);
 }
 
 /**
