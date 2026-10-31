@@ -453,6 +453,12 @@
   }
 }
 
+/* ---------- 휴대폰 아래 막대 (720px 이하에서만) ---------- */
+
+.mobile-bar {
+  display: none;
+}
+
 @media (max-width: 720px) {
   .home {
     padding: var(--space-12) var(--space-4) var(--space-12);
@@ -467,21 +473,72 @@
     gap: var(--space-6);
   }
 
+  /* 캔버스가 화면을 채우고, 레일·설정 패널은 아래 막대로 여는 바텀 시트로 */
   .workspace {
     grid-template-columns: minmax(0, 1fr);
+    min-height: calc(100dvh - var(--header-h));
+    padding-bottom: calc(var(--control-lg) + var(--space-4) + env(safe-area-inset-bottom));
   }
 
-  .rail {
-    border-right: 0;
-    border-bottom: var(--border-width) solid var(--border);
+  .workspace > .rail,
+  .workspace > .panel {
+    display: none;
   }
 
   .canvas__stage {
+    min-height: calc(100dvh - var(--header-h) - var(--control-lg) * 2 - var(--space-16));
     margin: 0 var(--space-2) var(--space-2);
   }
 
   .canvas__view {
     padding: var(--space-3);
+  }
+
+  .mobile-bar {
+    position: fixed;
+    z-index: var(--z-sticky);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom));
+    border-top: var(--border-width) solid var(--border);
+    background: var(--surface);
+  }
+
+  .mobile-bar__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    height: var(--control-lg);
+    border-radius: var(--radius-md);
+    background: var(--surface-sunken);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    transition: background-color var(--dur-fast) var(--ease-out),
+                transform var(--dur-fast) var(--ease-out);
+  }
+
+  .mobile-bar__btn:active {
+    transform: scale(var(--press-scale));
+    background: var(--surface-active);
+    transition-duration: var(--dur-instant);
+  }
+
+  /* 시트 안의 레일·패널 내용 */
+  .sheet .rail__section {
+    padding: var(--space-4) 0;
+  }
+
+  .sheet .rail__section:first-child {
+    padding-top: 0;
+  }
+
+  .sheet .panel__body {
+    padding: 0;
   }
 
   .app-header {

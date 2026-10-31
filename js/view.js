@@ -20,6 +20,7 @@ export function showView(to, { push = true } = {}) {
   const [enter, leave] = to === 'work' ? [work, home] : [home, work];
 
   document.getElementById('header-work').hidden = to !== 'work';
+  document.getElementById('mobile-bar').hidden = to !== 'work';
 
   if (!leave.hidden) {
     leave.classList.add('view-leave');

@@ -53,9 +53,14 @@ export function renderBoard(root, { tokens: t, brand, palette, icons }) {
   $('[data-slot="icon-meta"]').textContent =
     `${ICON_SETS[brand.iconSet].name} · ${ICON_WEIGHTS[brand.iconWeight].label}`;
   const grid = $('[data-slot="icons"]');
-  grid.toggleAttribute('data-loading', !icons);
-  grid.innerHTML = BOARD_ICONS.map((name) =>
-    `<span class="icon-cell" title="${name}">${icons ? icons.get(name) : ''}</span>`).join('');
+  /* 아이콘 SVG는 세트가 바뀔 때만 다시 넣는다 (슬라이더를 끄는 동안 매번 만들지 않게) */
+  const iconsChanged = grid.__icons !== icons || !grid.children.length;
+  if (iconsChanged) {
+    grid.__icons = icons;
+    grid.toggleAttribute('data-loading', !icons);
+    grid.innerHTML = BOARD_ICONS.map((name) =>
+      `<span class="icon-cell" title="${name}">${icons ? icons.get(name) : ''}</span>`).join('');
+  }
 
   /* 색 */
   setSwatch($('[data-slot="primary"]'), t.primary, t.primaryFg);
@@ -77,6 +82,7 @@ export function renderBoard(root, { tokens: t, brand, palette, icons }) {
   /* 컴포넌트 */
   $('[data-slot="radius-meta"]').textContent =
     `카드 ${RADIUS_LABEL[brand.radiusCard]} ${RADIUS_CARD[brand.radiusCard]}px · 버튼 ${RADIUS_LABEL[brand.radiusControl]}${brand.radiusControl === 'full' ? '' : ` ${RADIUS_CONTROL[brand.radiusControl]}px`}`;
+  if (!iconsChanged && $('[data-slot="components"]').children.length) return;
   const plus = icons?.get('plus') ?? '';
   const cal = icons?.get('calendar') ?? '';
   const clock = icons?.get('clock') ?? '';

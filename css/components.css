@@ -508,6 +508,11 @@
               visibility 0s;
 }
 
+/* 목록 자체에 포커스가 있어도 테두리 대신 가리키는 항목(data-active)으로 위치를 보여 준다 */
+.select__menu:focus-visible {
+  outline: none;
+}
+
 .select__option {
   display: flex;
   align-items: center;

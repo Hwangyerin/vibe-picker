@@ -46,3 +46,24 @@ export function toast(message, { tone = 'default', icon: iconName, duration = 18
     afterAnimation(el, () => el.remove());
   }, duration);
 }
+
+/* ==========================================================
+   스크린 리더에만 읽히는 안내 (화면에는 안 보인다)
+   다시 뽑기처럼 화면 여러 곳이 한꺼번에 바뀔 때, 무엇이 바뀌었는지 말로 알린다
+   ========================================================== */
+
+let srRegion = null;
+
+/** @param {string} message */
+export function announce(message) {
+  if (!srRegion || !document.body.contains(srRegion)) {
+    srRegion = document.createElement('div');
+    srRegion.className = 'sr-only';
+    srRegion.setAttribute('role', 'status');
+    srRegion.setAttribute('aria-live', 'polite');
+    document.body.appendChild(srRegion);
+  }
+  /* 같은 문장이 연달아 와도 다시 읽도록 비웠다가 넣는다 */
+  srRegion.textContent = '';
+  requestAnimationFrame(() => { srRegion.textContent = message; });
+}

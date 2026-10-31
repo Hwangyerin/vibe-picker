@@ -95,8 +95,8 @@
   height: var(--space-2);
   border-radius: var(--radius-full);
   background: var(--border-strong);
-  transition: width var(--dur-base) var(--ease-out),
-              background-color var(--dur-fast) var(--ease-out);
+  /* 폭은 움직이지 않고(레이아웃 애니메이션 금지) 색만 부드럽게 */
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
 
 .viewer__dots button[aria-selected="true"] {

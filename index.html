@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VibePicker — 사진 한 장으로 브랜드 만들기</title>
   <meta name="description" content="사진의 분위기에서 색·서체·아이콘을 정해 모바일 웹과 슬라이드에 입혀 보고, AI 프롬프트와 CSS로 가져가는 도구" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <meta property="og:title" content="VibePicker — 사진 한 장으로 브랜드 만들기" />
+  <meta property="og:description" content="사진에서 색 다섯 개를 뽑고 서체·아이콘·둥글기까지 맞춰 모바일 웹과 슬라이드에 입혀 본 뒤, AI 프롬프트와 CSS로 가져갑니다." />
+  <meta property="og:image" content="https://hwangyerin.github.io/vibe-picker/assets/og.jpg" />
+  <meta property="og:type" content="website" />
+  <meta name="theme-color" content="#F7F8FA" />
 
   <!-- 화면 모드를 먼저 적용해 다크 사용자가 흰 화면 깜빡임을 보지 않게 한다 -->
   <script>
@@ -112,6 +118,8 @@
 
     <!-- 왼쪽 레일: 사진 · 팔레트 · 색 역할 -->
     <aside class="rail" aria-label="사진과 팔레트">
+      <!-- 휴대폰에서는 이 묶음이 통째로 바텀 시트로 옮겨진다 -->
+      <div id="rail-content">
 
       <section class="rail__section">
         <div class="photo" id="photo">
@@ -173,6 +181,7 @@
                   data-tooltip="대비 되돌리기" aria-label="대비 되돌리기" disabled></button>
         </div>
       </section>
+      </div>
     </aside>
 
     <!-- 가운데 캔버스: 브랜드 보드 · 모바일 웹 · 슬라이드 -->
@@ -205,6 +214,12 @@
       <div class="panel__body" id="panel-body"></div>
     </aside>
   </div>
+
+  <!-- 휴대폰: 레일과 설정 패널을 바텀 시트로 여는 아래 막대 -->
+  <nav class="mobile-bar" id="mobile-bar" aria-label="작업 도구" hidden>
+    <button type="button" class="mobile-bar__btn" data-sheet="rail"><span data-i="image"></span>사진 · 팔레트</button>
+    <button type="button" class="mobile-bar__btn" data-sheet="panel"><span data-i="sliders"></span>브랜드 설정</button>
+  </nav>
 
   <!-- 창 어디에나 사진을 끌어다 놓을 때 -->
   <div class="drop-overlay" id="drop-overlay" hidden>

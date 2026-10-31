@@ -96,6 +96,18 @@
   animation: vp-rise var(--dur-base) var(--ease-out) both;
 }
 
+/* 스포이드 중에는 손가락으로 끌어도 화면이 스크롤되지 않게 */
+.photo[data-eyedropper] .photo__canvas {
+  touch-action: none;
+}
+
+/* 손가락일 때는 동그라미를 크게, 손가락에 가려지지 않게 위로 */
+.photo[data-touch] .photo__loupe {
+  width: var(--space-16);
+  height: var(--space-16);
+  transform: translate(calc(var(--x, 0px) - 32px), calc(var(--y, 0px) - 96px));
+}
+
 /* 커서 옆에 지금 가리키는 색을 보여주는 동그라미 */
 .photo__loupe {
   position: absolute;

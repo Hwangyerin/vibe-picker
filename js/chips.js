@@ -214,9 +214,35 @@ function initEyedropper() {
     loupe.style.setProperty('--y', `${e.clientY - pr.top}px`);
   });
 
-  canvas.addEventListener('pointerleave', () => { loupe.hidden = true; });
+  canvas.addEventListener('pointerleave', (e) => {
+    if (e.pointerType === 'mouse') loupe.hidden = true;
+  });
 
+  /* 손가락: 누른 채로 움직이며 색을 보고, 뗄 때 고른다 (확대 동그라미는 손가락 위에) */
+  let touchPicking = false;
+  canvas.addEventListener('pointerdown', (e) => {
+    if (pickingIndex === null || e.pointerType === 'mouse') return;
+    touchPicking = true;
+    canvas.setPointerCapture(e.pointerId);
+    photo.setAttribute('data-touch', '');
+    canvas.dispatchEvent(new PointerEvent('pointermove', e));
+  });
+  canvas.addEventListener('pointerup', (e) => {
+    if (!touchPicking) return;
+    touchPicking = false;
+    photo.removeAttribute('data-touch');
+    loupe.hidden = true;
+    const hex = colorAt(e);
+    if (!hex || pickingIndex === null) return;
+    const index = pickingIndex;
+    setPicking(null);
+    onPick?.(hex, index);
+    suppressClick = true; /* 뒤따라오는 click으로 두 번 고르지 않게 */
+  });
+
+  let suppressClick = false;
   canvas.addEventListener('click', (e) => {
+    if (suppressClick) { suppressClick = false; return; }
     if (pickingIndex === null) return;
     const hex = colorAt(e);
     if (!hex) return;

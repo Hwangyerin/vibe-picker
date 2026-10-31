@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- VibePicker 로고: 팔레트 다섯 줄 -->
+  <rect x="4" y="14" width="4" height="12" rx="2" fill="#D9C7A8"/>
+  <rect x="10" y="5" width="4" height="21" rx="2" fill="#2B2E38"/>
+  <rect x="16" y="9" width="4" height="17" rx="2" fill="#4F7BD9"/>
+  <rect x="22" y="7" width="4" height="19" rx="2" fill="#D6A15A"/>
+  <rect x="28" y="12" width="3" height="14" rx="1.5" fill="#6E8B6A"/>
+</svg>

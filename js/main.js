@@ -20,7 +20,8 @@ import { showView, showCanvasView, isWorkHash, pushWorkHash, clearWorkHash } fro
 import { icon } from './ui/icon.js';
 import { initSegmented } from './ui/segmented.js';
 import { confirmDialog } from './ui/dialog.js';
-import { toast } from './ui/toast.js';
+import { toast, announce } from './ui/toast.js';
+import { openSheet } from './ui/sheet.js';
 import { applyPaletteTheme, resetPaletteTheme, getUiMode, setUiMode } from './ui/theme.js';
 import { defaultBrand, brandTokens, applyBrandTokens, brandPrimary } from './brand.js';
 import { renderBoard } from './board.js';
@@ -68,6 +69,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* 저장 */
   document.getElementById('btn-save').addEventListener('click', handleSave);
+
+  /* 휴대폰: 아래 막대 → 레일·설정 패널을 바텀 시트로 */
+  document.getElementById('mobile-bar').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sheet]');
+    if (!b) return;
+    const rail = b.dataset.sheet === 'rail';
+    openSheet({
+      title: rail ? '사진 · 팔레트' : '브랜드 설정',
+      content: document.getElementById(rail ? 'rail-content' : 'panel-body'),
+    });
+  });
 
   /* 상태가 바뀔 때마다 저장 버튼 상태와 새로고침 복원용 임시 보관 */
   subscribe(() => {
@@ -344,6 +356,7 @@ function handleRepick() {
     isDirty: true,
   });
   updateUI();
+  announce(`새 팔레트: ${colors.join(', ')}`);
 }
 
 /** 팔레트 스타일 바꾸기: 같은 후보에서 그 스타일로 다시 고르고 다듬는다 */
@@ -362,12 +375,15 @@ function handleStyle(style) {
     isDirty: true,
   });
   updateUI();
+  announce(`팔레트 스타일 바꿈: ${colors.join(', ')}`);
 }
 
 /** 역할 섞기: 같은 5색 안에서 역할만 다시 */
 function handleShuffle() {
   setState({ roles: shuffleRoles(state.palette), isDirty: true });
   updateUI();
+  const r = state.roles;
+  announce(`역할을 섞었어요. 글자 ${r.text}, 메인 ${r.main}`);
 }
 
 function setContrast(offset) {
