@@ -25,6 +25,7 @@ import { applyPaletteTheme, resetPaletteTheme, getUiMode, setUiMode } from './ui
 import { defaultBrand, brandTokens, applyBrandTokens, brandPrimary } from './brand.js';
 import { renderBoard } from './board.js';
 import { renderMockup, stepMockup, refitMockup } from './mockups.js';
+import { openExportDialog } from './export-dialog.js';
 import { initPanel, renderPanel } from './panel.js';
 import { paletteMood, rankFonts, loadFont, loadPreviews } from './fonts.js';
 import { loadIconSet, ICON_SETS, ICON_WEIGHTS } from './icons.js';
@@ -109,6 +110,11 @@ document.addEventListener('DOMContentLoaded', () => {
     },
   });
 
+  /* 내보내기: 지금 보고 있는 화면(모바일 웹·슬라이드)에 맞춘 프롬프트부터 */
+  document.getElementById('btn-export').addEventListener('click', () => {
+    openExportDialog(exportInput, state.canvasView === 'slides' ? 'slides' : 'mobile');
+  });
+
   /* 로고 → 첫 화면 */
   document.getElementById('logo').addEventListener('click', (e) => {
     e.preventDefault();
@@ -186,6 +192,7 @@ function updateUI() {
   renderKept(state.paletteHistory, currentKeptIndex());
   setPhotoTools(Boolean(image));
   styleSeg.setDisabled(!image);
+  document.getElementById('btn-export').disabled = false;
 
   /* VibePicker 자체가 지금 브랜드 강조색과 팔레트로 물든다 */
   applyPaletteTheme(rolesForMode(displayRoles, 'light'), brandPrimary(state.brand, displayRoles, displayPalette));
@@ -240,6 +247,21 @@ function requestFont(id) {
     loadingFonts.delete(id);
     if (state.roles) updateUI();
   });
+}
+
+/** 내보내기에 쓸 값: 라이트·다크 토큰을 화면과 같은 방식으로 계산 */
+function exportInput() {
+  const { brand, roles, palette, contrastOffset } = state;
+  const displayRoles = applyContrastToRoles(roles, contrastOffset);
+  const displayPalette = applyContrastToPalette(palette, roles, contrastOffset);
+  const autoFont = rankFonts(paletteMood(displayPalette))[0].font.id;
+  /* 내보내기는 받는 중인 서체가 아니라 사용자가 고른 서체 그대로 */
+  const chosen = { ...brand, fontDisplay: brand.fontDisplay ?? autoFont };
+  return {
+    brand,
+    light: brandTokens(chosen, displayRoles, displayPalette, 'light', autoFont),
+    dark: brandTokens(chosen, displayRoles, displayPalette, 'dark', autoFont),
+  };
 }
 
 /** 지금 설정의 아이콘 (아직 안 받아졌으면 받기 시작하고 null) */
