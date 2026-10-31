@@ -1,0 +1,116 @@
+/* ==========================================================
+   motion.css — 공통 등장·전환 모션, 움직임 줄이기 처리 (v2)
+   원칙: 상태가 바뀌었다는 걸 알릴 때만 움직인다.
+         transform과 opacity만 움직인다.
+   ========================================================== */
+
+/* ---------- 키프레임 ---------- */
+
+/* 아래에서 살짝 올라오며 나타남 — 화면 전환, 토스트 */
+@keyframes vp-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 살짝 커지며 나타남 — 창, 메뉴 */
+@keyframes vp-pop {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* 살짝 작아지며 사라짐 */
+@keyframes vp-pop-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.98); }
+}
+
+@keyframes vp-fade-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes vp-fade-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* 아래에서 올라오는 시트 */
+@keyframes vp-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* 불러오는 중 스켈레톤의 빛 */
+@keyframes vp-shimmer {
+  from { background-position: 150% 0; }
+  to   { background-position: -50% 0; }
+}
+
+/* ---------- 등장 유틸리티 ---------- */
+
+.anim-rise {
+  animation: vp-rise var(--dur-base) var(--ease-out) both;
+}
+
+.anim-pop {
+  animation: vp-pop var(--dur-base) var(--ease-out) both;
+}
+
+.anim-fade {
+  animation: vp-fade-in var(--dur-base) var(--ease-out) both;
+}
+
+/* 자식들이 차례로 등장 — 자식에 style="--i: 0", "--i: 1" … */
+.anim-stagger > * {
+  animation: vp-rise var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger));
+}
+
+/* ---------- 화면(뷰) 전환 ----------
+   js에서 나가는 쪽에 .view-leave, 들어오는 쪽에 .view-enter를 붙인다 */
+.view-enter {
+  animation: vp-rise var(--dur-base) var(--ease-out) both;
+}
+
+.view-leave {
+  animation: vp-fade-out var(--dur-fast) var(--ease-out) both;
+}
+
+/* ---------- 호버로 떠오르는 요소 ---------- */
+.lift {
+  transition: transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .lift:hover {
+    transform: translateY(var(--lift));
+    box-shadow: var(--shadow-float);
+  }
+}
+
+.lift:active {
+  transform: translateY(0) scale(0.99);
+  transition-duration: var(--dur-instant);
+}
+
+/* ---------- 스켈레톤 ---------- */
+.skeleton {
+  background: linear-gradient(90deg,
+      var(--surface-sunken) 0%,
+      var(--surface-hover) 50%,
+      var(--surface-sunken) 100%);
+  background-size: 200% 100%;
+  animation: vp-shimmer 1.4s linear infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- 움직임 줄이기 ----------
+   운영체제에서 "동작 줄이기"를 켠 사용자에게는 모든 움직임을 끈다.
+   상태는 즉시 바뀌므로 기능은 그대로 쓸 수 있다 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}

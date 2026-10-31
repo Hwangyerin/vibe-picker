@@ -1,0 +1,206 @@
+/* ==========================================================
+   tokens.css — VibePicker 디자인 토큰 (v2)
+   모든 CSS는 여기 있는 변수만 쓴다. HEX·px·ms를 직접 쓰지 않는다.
+   규칙과 쓰임새는 docs/design-system.md 참고
+   ========================================================== */
+
+:root {
+  /* ---------- 사진에 물드는 값 ----------
+     js/ui/theme.js가 사진 팔레트에 맞춰 바꾼다.
+     --tint-h: 중립색이 머금을 색조 각도 (OKLCH hue, 0~360)
+     --tint-c: 중립색이 머금을 채도 (0 = 순수 회색, 0.02 = 꽤 물듦) */
+  --tint-h: 250;
+  --tint-c: 0.008;
+
+  /* 강조색: theme.js가 글자 대비 4.5:1을 넘도록 보정한 값을 넣는다 */
+  --accent: oklch(52% 0.14 var(--tint-h));
+  --accent-fg: oklch(99% 0 0);
+
+  /* ---------- 중립색 12단계 ----------
+     밝기(L)는 고정, 채도는 --tint-c에 비례 → 사진을 바꾸면 회색 전체가 살짝 물든다 */
+  --neutral-0:   oklch(100%  0 0);
+  --neutral-50:  oklch(98.4% calc(var(--tint-c) * 0.6) var(--tint-h));
+  --neutral-100: oklch(96.6% calc(var(--tint-c) * 0.8) var(--tint-h));
+  --neutral-150: oklch(94.4% calc(var(--tint-c) * 0.9) var(--tint-h));
+  --neutral-200: oklch(91.6% var(--tint-c) var(--tint-h));
+  --neutral-300: oklch(85.6% calc(var(--tint-c) * 1.1) var(--tint-h));
+  --neutral-400: oklch(71.5% calc(var(--tint-c) * 1.2) var(--tint-h));
+  --neutral-500: oklch(57.5% calc(var(--tint-c) * 1.2) var(--tint-h));
+  --neutral-600: oklch(47.5% calc(var(--tint-c) * 1.1) var(--tint-h));
+  --neutral-700: oklch(38.5% var(--tint-c) var(--tint-h));
+  --neutral-800: oklch(28.5% calc(var(--tint-c) * 0.9) var(--tint-h));
+  --neutral-900: oklch(21%   calc(var(--tint-c) * 0.8) var(--tint-h));
+  --neutral-950: oklch(15.5% calc(var(--tint-c) * 0.7) var(--tint-h));
+
+  /* ---------- 의미 색 (라이트) ----------
+     컴포넌트는 중립색 단계를 직접 쓰지 않고 이 이름만 쓴다 */
+  --bg:             var(--neutral-50);   /* 페이지 바탕 */
+  --surface:        var(--neutral-0);    /* 패널·카드 */
+  --surface-sunken: var(--neutral-100);  /* 세그먼트 바탕, 우물 */
+  --surface-hover:  var(--neutral-100);
+  --surface-active: var(--neutral-150);
+  --surface-inverse: var(--neutral-900); /* 토스트 */
+  --border:         var(--neutral-200);
+  --border-strong:  var(--neutral-300);
+  --text:           var(--neutral-900);
+  --text-muted:     var(--neutral-600);  /* 설명, 보조 라벨 (대비 6:1 이상) */
+  --text-subtle:    var(--neutral-500);  /* 자리 표시 글자, 꺼진 라벨 — 정보 전달에 쓰지 않음 */
+  --text-inverse:   var(--neutral-50);
+
+  --accent-hover:  color-mix(in oklch, var(--accent), black 12%);
+  --accent-active: color-mix(in oklch, var(--accent), black 20%);
+  --accent-soft:   color-mix(in oklch, var(--accent) 10%, var(--surface));
+  --accent-text:   color-mix(in oklch, var(--accent), var(--text) 25%); /* 옅은 바탕 위 강조 글자 */
+  --focus-ring:    color-mix(in oklch, var(--accent) 50%, transparent);
+
+  --success: oklch(52% 0.12 155);
+  --warning: oklch(55% 0.14 60);
+  --danger:  oklch(54% 0.19 27);
+  --danger-hover: color-mix(in oklch, var(--danger), black 12%);
+  --warning-soft: color-mix(in oklch, var(--warning) 12%, var(--surface));
+
+  /* ---------- 서체 ---------- */
+  --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+               system-ui, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* 타입 스케일 — 이 9단계 밖의 크기는 쓰지 않는다 */
+  --text-2xs: 11px;  /* 배지, 아주 작은 라벨 */
+  --text-xs:  12px;  /* 캡션, HEX 보조 */
+  --text-sm:  13px;  /* 보조 라벨, 세그먼트 */
+  --text-base: 14px; /* UI 기본 */
+  --text-md:  16px;  /* 본문, 강조 라벨 */
+  --text-lg:  20px;  /* 섹션 제목 */
+  --text-xl:  28px;  /* 화면 제목 */
+  --text-2xl: 40px;  /* 첫 화면 제목 (모바일) */
+  --text-3xl: 56px;  /* 첫 화면 제목 (PC) */
+
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+
+  --leading-tight:  1.2;   /* 큰 제목 */
+  --leading-snug:   1.4;   /* UI 라벨 */
+  --leading-normal: 1.6;   /* 본문 */
+
+  --tracking-tight:  -0.025em; /* 28px 이상 제목 */
+  --tracking-normal: -0.01em;  /* 한글 UI 기본 */
+  --tracking-wide:    0.04em;  /* 영문 대문자 라벨 */
+
+  /* ---------- 간격 (4px 그리드) ---------- */
+  --space-0-5: 2px;
+  --space-1:   4px;
+  --space-1-5: 6px;
+  --space-2:   8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* ---------- 크기 ---------- */
+  --control-sm: 30px;  /* 작은 버튼·세그먼트 */
+  --control-md: 36px;  /* 기본 버튼·입력창 */
+  --control-lg: 44px;  /* 첫 화면 주요 버튼, 휴대폰 터치 */
+  --icon-sm: 14px;
+  --icon-md: 16px;
+  --icon-lg: 20px;
+  --icon-stroke: 1.75;
+
+  --header-h: 56px;
+  --rail-w:   320px;
+  --panel-w:  300px;
+  --content-max: 1200px;
+
+  /* ---------- 모양 ---------- */
+  --radius-sm:   6px;   /* 칩, 태그, 세그먼트 안쪽 */
+  --radius-md:   10px;  /* 버튼, 입력창, 메뉴 항목 */
+  --radius-lg:   16px;  /* 패널, 카드, 창 */
+  --radius-full: 999px;
+
+  --border-width: 1px;
+
+  /* 그림자는 두 단계만. 나머지 구분은 경계선으로 */
+  --shadow-color: oklch(25% calc(var(--tint-c) * 2) var(--tint-h));
+  --shadow-float:   0 1px 2px  color-mix(in oklch, var(--shadow-color) 8%, transparent),
+                    0 4px 14px color-mix(in oklch, var(--shadow-color) 7%, transparent);
+  --shadow-overlay: 0 2px 6px  color-mix(in oklch, var(--shadow-color) 10%, transparent),
+                    0 20px 48px color-mix(in oklch, var(--shadow-color) 16%, transparent);
+  --backdrop: color-mix(in oklch, var(--neutral-950) 36%, transparent);
+
+  /* ---------- 쌓임 순서 ---------- */
+  --z-sticky:   10;
+  --z-dropdown: 30;
+  --z-sheet:    40;
+  --z-dialog:   50;
+  --z-toast:    60;
+
+  /* ---------- 모션 ----------
+     duration은 4개, easing은 3개만 쓴다. transition: all 금지 */
+  --dur-instant: 80ms;   /* 누름 반응 */
+  --dur-fast:   140ms;   /* 호버, 색 바뀜, 툴팁 */
+  --dur-base:   220ms;   /* 탭·화면 전환, 드롭다운 */
+  --dur-slow:   320ms;   /* 창·시트 열림, 팔레트 교체 */
+
+  --ease-out:    cubic-bezier(0.2, 0.8, 0.2, 1);    /* 들어오는 것, 호버 */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);    /* 자리를 바꾸는 것 */
+  --ease-sheet:  cubic-bezier(0.32, 0.72, 0, 1);    /* 창·바텀 시트 */
+
+  --stagger: 30ms;       /* 차례로 바뀌는 항목 사이 간격 (팔레트 칩) */
+  --lift: -2px;          /* 호버 시 떠오르는 높이 */
+  --press-scale: 0.97;   /* 누를 때 줄어드는 비율 */
+
+  color-scheme: light;
+}
+
+/* ---------- 다크 모드 ----------
+   시스템 설정을 따르되, data-theme으로 직접 고르면 그쪽이 이긴다 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:             oklch(16%   calc(var(--tint-c) * 0.9) var(--tint-h));
+    --surface:        oklch(19.5% calc(var(--tint-c) * 0.9) var(--tint-h));
+    --surface-sunken: oklch(14%   calc(var(--tint-c) * 0.8) var(--tint-h));
+    --surface-hover:  oklch(24%   var(--tint-c) var(--tint-h));
+    --surface-active: oklch(27%   var(--tint-c) var(--tint-h));
+    --surface-inverse: oklch(93%  calc(var(--tint-c) * 0.6) var(--tint-h));
+    --border:         oklch(28%   var(--tint-c) var(--tint-h));
+    --border-strong:  oklch(36%   var(--tint-c) var(--tint-h));
+    --text:           oklch(95%   calc(var(--tint-c) * 0.5) var(--tint-h));
+    --text-muted:     oklch(73%   calc(var(--tint-c) * 0.8) var(--tint-h));
+    --text-subtle:    oklch(58%   calc(var(--tint-c) * 0.8) var(--tint-h));
+    --text-inverse:   oklch(18%   var(--tint-c) var(--tint-h));
+    --accent-hover:   color-mix(in oklch, var(--accent), white 10%);
+    --accent-active:  color-mix(in oklch, var(--accent), white 16%);
+    --accent-soft:    color-mix(in oklch, var(--accent) 16%, var(--surface));
+    --accent-text:    color-mix(in oklch, var(--accent), white 35%);
+    --shadow-color:   oklch(5% 0 0);
+    --backdrop:       color-mix(in oklch, oklch(5% 0 0) 55%, transparent);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg:             oklch(16%   calc(var(--tint-c) * 0.9) var(--tint-h));
+  --surface:        oklch(19.5% calc(var(--tint-c) * 0.9) var(--tint-h));
+  --surface-sunken: oklch(14%   calc(var(--tint-c) * 0.8) var(--tint-h));
+  --surface-hover:  oklch(24%   var(--tint-c) var(--tint-h));
+  --surface-active: oklch(27%   var(--tint-c) var(--tint-h));
+  --surface-inverse: oklch(93%  calc(var(--tint-c) * 0.6) var(--tint-h));
+  --border:         oklch(28%   var(--tint-c) var(--tint-h));
+  --border-strong:  oklch(36%   var(--tint-c) var(--tint-h));
+  --text:           oklch(95%   calc(var(--tint-c) * 0.5) var(--tint-h));
+  --text-muted:     oklch(73%   calc(var(--tint-c) * 0.8) var(--tint-h));
+  --text-subtle:    oklch(58%   calc(var(--tint-c) * 0.8) var(--tint-h));
+  --text-inverse:   oklch(18%   var(--tint-c) var(--tint-h));
+  --accent-hover:   color-mix(in oklch, var(--accent), white 10%);
+  --accent-active:  color-mix(in oklch, var(--accent), white 16%);
+  --accent-soft:    color-mix(in oklch, var(--accent) 16%, var(--surface));
+  --accent-text:    color-mix(in oklch, var(--accent), white 35%);
+  --shadow-color:   oklch(5% 0 0);
+  --backdrop:       color-mix(in oklch, oklch(5% 0 0) 55%, transparent);
+  color-scheme: dark;
+}
