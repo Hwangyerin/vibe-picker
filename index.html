@@ -29,6 +29,8 @@
   <link rel="stylesheet" href="css/panel.css" />
   <!-- 가운데 브랜드 보드 (브랜드 변수 --b-*만 씀) -->
   <link rel="stylesheet" href="css/board.css" />
+  <!-- 적용 화면: 모바일 웹·슬라이드 (브랜드 변수 --b-*만 씀) -->
+  <link rel="stylesheet" href="css/mockups.css" />
 </head>
 <body>
 
@@ -180,22 +182,10 @@
       </div>
 
       <div class="canvas__stage" id="canvas-stage">
-        <!-- 브랜드 보드는 board.js가, 모바일 웹·슬라이드는 12단계에서 채운다 -->
+        <!-- 브랜드 보드는 board.js가, 모바일 웹·슬라이드는 mockups.js가 채운다 -->
         <div class="canvas__view" data-view="board" id="board-root"></div>
-        <div class="canvas__view" data-view="mobile" hidden>
-          <div class="empty">
-            <span data-i="phone"></span>
-            <p class="empty__title">모바일 웹 화면을 준비하고 있어요</p>
-            <p class="empty__text">같은 브랜드가 일정 관리 서비스 세 화면에 입혀집니다.</p>
-          </div>
-        </div>
-        <div class="canvas__view" data-view="slides" hidden>
-          <div class="empty">
-            <span data-i="slides"></span>
-            <p class="empty__title">발표 슬라이드를 준비하고 있어요</p>
-            <p class="empty__text">표지·본문·차트 세 장에 같은 브랜드가 입혀집니다.</p>
-          </div>
-        </div>
+        <div class="canvas__view" data-view="mobile" id="mobile-root" hidden></div>
+        <div class="canvas__view" data-view="slides" id="slides-root" hidden></div>
       </div>
     </section>
 

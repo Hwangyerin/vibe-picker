@@ -99,6 +99,13 @@
   border-radius: var(--radius-sm);
 }
 
+/* ---------- 미리보기 라이트·다크 크로스페이드 (View Transitions) ---------- */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease-out);
+}
+
 /* ---------- 움직임 줄이기 ----------
    운영체제에서 "동작 줄이기"를 켠 사용자에게는 모든 움직임을 끈다.
    상태는 즉시 바뀌므로 기능은 그대로 쓸 수 있다 */
@@ -112,5 +119,11 @@
     transition-duration: 0.01ms !important;
     transition-delay: 0ms !important;
     scroll-behavior: auto !important;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }

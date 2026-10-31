@@ -1,621 +1,424 @@
 /* ==========================================================
-   mockups.js — 예시 화면 그리기, 라이트·다크 전환
-   뽑은 색이 입혀진 슬라이드·웹사이트·앱 목업
-
-   각 목업은 실제 크기(슬라이드 960×540, 웹 1200×750, 앱 390×844)로
-   그린 뒤 뷰어 크기에 맞춰 통째로 축소한다.
-   → 글자·여백 비율이 실제 화면과 똑같이 유지됨
+   mockups.js — 적용 화면: 모바일 웹 3화면 · 발표 슬라이드 3장 (v2)
+   가상 서비스: 팀 프로젝트 일정 관리 서비스 (이름은 브랜드 워드마크)
+   실제 크기(휴대폰 390×844, 슬라이드 960×540)로 그린 뒤 캔버스에 맞춰 줄인다.
+   색·서체·둥글기는 --b-* 변수로만 칠하므로, 설정이 바뀌어도 다시 그리지 않고 바로 바뀐다.
+   다시 그리는 건 글자(워드마크)·심볼·아이콘 세트가 바뀔 때뿐이다.
    ========================================================== */
 
-import { onColor, liftForDark } from './color.js';
+import { icon } from './ui/icon.js';
 
-/* 목업 카드 id → 실제 디자인 너비(px) */
-const DESIGN_WIDTH = {
-  'mockup-slide-cover': 960,
-  'mockup-slide-body':  960,
-  'mockup-slide-chart': 960,
-  'mockup-web':         1200,
-  'mockup-app':         390,
+const KINDS = {
+  mobile: { w: 390, h: 844, names: ['랜딩', '오늘 일정', '일정 추가'], render: [mobileLanding, mobileToday, mobileAdd] },
+  slides: { w: 960, h: 540, names: ['표지', '문제와 해결', '성과'], render: [slideCover, slideProblem, slideResult] },
 };
 
-/**
- * 팔레트 역할 배정 결과를 CSS 변수로 주입하고 목업 내용을 채움
- * @param {{ bg, text, main, point, sub, bgDark, textDark }} roles
- * @param {'light'|'dark'} mode
- */
-export function renderMockups(roles, mode = 'light') {
-  /* CSS 변수로 색 주입 (목업 전체에 한 번에 적용) */
-  injectCssVars(roles);
+const viewers = {}; /* kind → { root, index, contentKey } */
 
-  /* 목업 DOM 채우기 (처음 한 번만, 이후에는 색만 바뀜) */
-  if (!document.getElementById('mockup-slide-cover').dataset.built) {
-    buildSlideCover();
-    buildSlideBody();
-    buildSlideChart();
-    buildWeb();
-    buildApp();
-    initFit();
-    /* 한 번 빌드됐다는 표시 */
-    document.getElementById('mockup-slide-cover').dataset.built = '1';
+/**
+ * 적용 화면 그리기
+ * @param {'mobile'|'slides'} kind
+ * @param {HTMLElement} root - .canvas__view
+ * @param {object} p
+ * @param {object} p.brand
+ * @param {Map<string,string>|null} p.icons
+ */
+export function renderMockup(kind, root, { brand, icons }) {
+  let v = viewers[kind];
+  if (!v || v.root !== root) {
+    v = viewers[kind] = { root, index: 0, contentKey: '' };
+    root.innerHTML = viewerMarkup(kind);
+    root.querySelector('.viewer__prev').addEventListener('click', () => go(kind, v.index - 1));
+    root.querySelector('.viewer__next').addEventListener('click', () => go(kind, v.index + 1));
+    root.querySelector('.viewer__dots').addEventListener('click', (e) => {
+      const d = e.target.closest('[data-go]');
+      if (d) go(kind, Number(d.dataset.go));
+    });
+    observeSize(kind);
   }
 
-  /* 라이트·다크 모드 적용 */
-  applyMode(mode);
+  const key = `${brand.wordmark}|${brand.symbol ? brand.symbol.length : 0}|${icons ? icons.size + brand.iconSet + brand.iconWeight : 'none'}`;
+  if (key !== v.contentKey) {
+    v.contentKey = key;
+    const ctx = makeCtx(brand, icons);
+    root.querySelector('.viewer__track').innerHTML = KINDS[kind].render
+      .map((fn, i) => `<div class="viewer__screen ${kind === 'mobile' ? 'phone' : 'slide'}" aria-hidden="${i !== v.index}">${fn(ctx)}</div>`)
+      .join('');
+  }
+  fit(kind);
+  paintNav(kind);
 }
 
-/**
- * 라이트·다크 전환 (디졸브는 CSS transition으로 처리)
- * @param {'light'|'dark'} mode
- */
-export function applyMode(mode) {
-  const cards = document.querySelectorAll('.mockup-card');
-  cards.forEach((card) => {
-    if (mode === 'dark') {
-      card.classList.add('dark');
-    } else {
-      card.classList.remove('dark');
-    }
-  });
+/** 키보드 ←→로 넘기기 (main.js가 지금 보이는 종류를 넘겨 준다) */
+export function stepMockup(kind, dir) {
+  const v = viewers[kind];
+  if (v) go(kind, v.index + dir);
 }
 
-/* ---------- CSS 변수 주입 ---------- */
+/* ==========================================================
+   보는 틀: 화살표 · 점 · 크기 맞추기
+   ========================================================== */
 
-/**
- * :root에 --mk-* 변수를 주입해 목업 전체 색을 한 번에 바꿈
- * - on-main / on-point: 색 버튼 위에 올라가는 글자색 (흰색·검정 중 잘 읽히는 쪽)
- * - *-dark: 다크 배경에서 묻히는 색은 밝기만 올려서 사용
- */
-function injectCssVars({ bg, text, main, point, sub, bgDark, textDark }) {
-  const mainDark  = liftForDark(main,  bgDark);
-  const pointDark = liftForDark(point, bgDark);
-  const subDark   = liftForDark(sub,   bgDark);
+function viewerMarkup(kind) {
+  const { w, h, names } = KINDS[kind];
+  return `
+    <div class="viewer viewer--${kind}" style="--w: ${w}px; --h: ${h}px">
+      <div class="viewer__stage">
+        <button type="button" class="viewer__nav viewer__prev btn btn--secondary btn--icon" aria-label="이전 화면">${icon('chevron-left')}</button>
+        <div class="viewer__frame">
+          <div class="viewer__scale">
+            <div class="viewer__track"></div>
+          </div>
+        </div>
+        <button type="button" class="viewer__nav viewer__next btn btn--secondary btn--icon" aria-label="다음 화면">${icon('chevron-right')}</button>
+      </div>
+      <div class="viewer__foot">
+        <div class="viewer__dots" role="tablist" aria-label="화면 고르기">
+          ${names.map((n, i) => `<button type="button" role="tab" data-go="${i}" aria-label="${i + 1}. ${n}"></button>`).join('')}
+        </div>
+        <p class="viewer__caption" aria-live="polite"></p>
+      </div>
+    </div>`;
+}
 
-  const vars = {
-    '--mk-bg':            bg,
-    '--mk-text':          text,
-    '--mk-main':          main,
-    '--mk-point':         point,
-    '--mk-sub':           sub,
-    '--mk-bg-dark':       bgDark,
-    '--mk-text-dark':     textDark,
-    '--mk-main-dark':     mainDark,
-    '--mk-point-dark':    pointDark,
-    '--mk-sub-dark':      subDark,
-    '--mk-on-main':       onColor(main),
-    '--mk-on-point':      onColor(point),
-    '--mk-on-sub':        onColor(sub),
-    '--mk-on-main-dark':  onColor(mainDark),
-    '--mk-on-point-dark': onColor(pointDark),
-    '--mk-on-sub-dark':   onColor(subDark),
+function go(kind, i) {
+  const v = viewers[kind];
+  const n = KINDS[kind].names.length;
+  const next = Math.max(0, Math.min(n - 1, i));
+  if (next === v.index) return;
+  v.index = next;
+  paintNav(kind);
+}
+
+function paintNav(kind) {
+  const v = viewers[kind];
+  const { names } = KINDS[kind];
+  const root = v.root;
+  root.querySelector('.viewer__track').style.setProperty('--i', v.index);
+  root.querySelectorAll('.viewer__screen').forEach((s, i) => s.setAttribute('aria-hidden', String(i !== v.index)));
+  root.querySelectorAll('.viewer__dots [data-go]').forEach((d, i) => d.setAttribute('aria-selected', String(i === v.index)));
+  root.querySelector('.viewer__prev').disabled = v.index === 0;
+  root.querySelector('.viewer__next').disabled = v.index === names.length - 1;
+  root.querySelector('.viewer__caption').innerHTML =
+    `<span class="num">${v.index + 1} / ${names.length}</span> ${names[v.index]}`;
+}
+
+/** 캔버스 크기에 맞춰 축소 비율 계산 */
+function fit(kind) {
+  const v = viewers[kind];
+  const stage = document.getElementById('canvas-stage');
+  if (!stage || v.root.hidden) return;
+  const { w, h } = KINDS[kind];
+  const navSpace = 2 * (36 + 16) + 32;   /* 양쪽 화살표 + 여백 */
+  const footSpace = 72;                   /* 점·설명 */
+  const availW = Math.max(160, stage.clientWidth - navSpace);
+  const availH = Math.max(200, stage.clientHeight - footSpace - 48);
+  const scale = Math.min(availW / w, availH / h, kind === 'mobile' ? 0.9 : 1);
+  v.root.querySelector('.viewer').style.setProperty('--s', scale.toFixed(4));
+}
+
+function observeSize(kind) {
+  const stage = document.getElementById('canvas-stage');
+  if (!stage || observeSize.done?.has(kind)) return;
+  observeSize.done = observeSize.done ?? new Set();
+  observeSize.done.add(kind);
+  new ResizeObserver(() => fit(kind)).observe(stage);
+}
+
+/** 보이지 않던 화면을 보이게 했을 때 크기를 다시 맞춘다 */
+export function refitMockup(kind) {
+  if (viewers[kind]) fit(kind);
+}
+
+/* ==========================================================
+   그리기 도우미
+   ========================================================== */
+
+function makeCtx(brand, icons) {
+  const name = esc(brand.wordmark.trim() || 'Planit');
+  const ic = (n, cls = '') => {
+    const svg = icons?.get(n) ?? '<span class="b-icon"></span>';
+    return cls ? svg.replace('class="b-icon"', `class="b-icon ${cls}"`) : svg;
   };
-
-  const root = document.documentElement;
-  Object.entries(vars).forEach(([name, value]) => root.style.setProperty(name, value));
+  const letter = esc([...(brand.wordmark.trim() || 'P')][0].toUpperCase());
+  const symbol = (size) => (brand.symbol
+    ? `<span class="m-symbol m-symbol--img" style="--size: ${size}px"><img src="${brand.symbol}" alt="" /></span>`
+    : `<span class="m-symbol" style="--size: ${size}px"><span>${letter}</span><i></i></span>`);
+  return { name, ic, symbol };
 }
 
-/* ---------- 실제 크기 → 뷰어 크기 축소 ---------- */
+/* 팀원 (아바타 색은 브랜드 색에서) */
+const PEOPLE = [
+  { n: '지수', c: 'primary' }, { n: '민호', c: 'point' }, { n: '하린', c: 'sub' }, { n: '도윤', c: 'tertiary' },
+];
+const avatar = (p, size = 28) =>
+  `<span class="m-avatar m-avatar--${p.c}" style="--size: ${size}px">${p.n.slice(0, 1)}</span>`;
+const avatars = (list, size) => `<span class="m-avatars">${list.map((p) => avatar(p, size)).join('')}</span>`;
 
-/**
- * 카드 크기가 바뀔 때마다 안쪽 캔버스를 비율대로 축소
- * (숨겨진 탭은 너비가 0이라 건너뛰고, 탭이 열리면 다시 호출됨)
- */
-function initFit() {
-  const observer = new ResizeObserver((entries) => {
-    entries.forEach(({ target }) => fit(target));
-  });
-  Object.keys(DESIGN_WIDTH).forEach((id) => observer.observe(document.getElementById(id)));
-}
+const statusBar = (ic) => `
+  <div class="m-status">
+    <span class="num">9:41</span>
+    <span class="m-status__icons"><i></i><i></i><i></i><b></b></span>
+  </div>`;
 
-function fit(card) {
-  const canvas = card.firstElementChild;
-  const width  = card.clientWidth;
-  if (!canvas || !width) return;
-  canvas.style.transform = `scale(${width / DESIGN_WIDTH[card.id]})`;
-}
+/* ==========================================================
+   모바일 웹 ① 랜딩
+   ========================================================== */
 
-/* ---------- 아이콘 ---------- */
+function mobileLanding({ name, ic, symbol }) {
+  return `
+    <div class="m-screen m-landing">
+      ${statusBar(ic)}
+      <header class="m-topbar">
+        <span class="m-brand">${symbol(28)}<b>${name}</b></span>
+        <span class="m-iconbtn">${ic('menu')}</span>
+      </header>
 
-/** 선 아이콘 SVG (색은 currentColor를 따라감) */
-const icon = (paths) =>
-  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
-
-const ICONS = {
-  home:     icon('<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'),
-  chart:    icon('<path d="M5 20V11M12 20V4M19 20v-7"/>'),
-  card:     icon('<rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/>'),
-  user:     icon('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>'),
-  bell:     icon('<path d="M6 9a6 6 0 1 1 12 0c0 6 2 7 2 7H4s2-1 2-7M10 20a2 2 0 0 0 4 0"/>'),
-  send:     icon('<path d="M7 17 17 7M8 7h9v9"/>'),
-  plus:     icon('<path d="M12 5v14M5 12h14"/>'),
-  swap:     icon('<path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/>'),
-  scan:     icon('<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/>'),
-  coffee:   icon('<path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 10h1.5a2.5 2.5 0 0 1 0 5H17M8 3v3M12 3v3"/>'),
-  bag:      icon('<path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2"/>'),
-  bus:      icon('<rect x="4" y="4" width="16" height="13" rx="2"/><path d="M4 11h16M8 17v3M16 17v3"/>'),
-  income:   icon('<path d="M12 4v14M6 12l6 6 6-6"/>'),
-  check:    icon('<path d="m5 12 5 5 9-10"/>'),
-  calendar: icon('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
-  bolt:     icon('<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>'),
-  lock:     icon('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
-  play:     icon('<path d="m8 5 11 7-11 7z"/>'),
-  back:     icon('<path d="m15 5-7 7 7 7"/>'),
-  down:     icon('<path d="m6 9 6 6 6-6"/>'),
-  forward:  icon('<path d="m9 5 7 7-7 7"/>'),
-  reload:   icon('<path d="M20 11a8 8 0 1 0-2.3 6M20 5v6h-6"/>'),
-};
-
-/* ---------- 목업 DOM 빌더 ---------- */
-
-/** 슬라이드 공통 하단 줄 (로고 + 문서명 + 쪽 번호) */
-const slideFooter = (page) => `
-  <div class="sl-footer">
-    <span class="sl-footer-brand"><i class="sl-logo-mark"></i>Brewing Lab</span>
-    <span>2026 상반기 구독 서비스 성과 보고</span>
-    <span>${page} / 12</span>
-  </div>
-`;
-
-/** 슬라이드 표지 목업 */
-function buildSlideCover() {
-  document.getElementById('mockup-slide-cover').innerHTML = `
-    <div class="mk-canvas sl sl-cover">
-      <div class="sl-cover-main">
-        <div class="sl-cover-brand"><i class="sl-logo-mark"></i>BREWING LAB</div>
-        <div class="sl-cover-heading">
-          <span class="sl-pill">2026 H1 Business Review</span>
-          <div class="sl-cover-title">한 잔의 습관을<br>데이터로 읽다</div>
-          <div class="sl-cover-sub">원두 정기구독 서비스 상반기 성과와 하반기 전략</div>
+      <section class="m-hero">
+        <p class="m-eyebrow">팀 프로젝트 일정 관리</p>
+        <h1 class="m-display">회의는 짧게,<br />마감은 같이</h1>
+        <p class="m-lead">누가 언제 무엇을 하는지 한 화면에서 봅니다. 마감 하루 전에는 담당자에게 알림이 갑니다.</p>
+        <div class="m-actions">
+          <span class="m-btn m-btn--primary m-btn--block">팀 만들고 시작하기</span>
+          <span class="m-btn m-btn--ghost m-btn--block">이미 팀이 있어요 ${ic('arrow-right')}</span>
         </div>
-        <div class="sl-cover-meta">
-          <span>브랜드전략팀 김도윤</span>
-          <span>2026. 07. 14</span>
+      </section>
+
+      <section class="m-preview">
+        <div class="m-preview__card">
+          <span class="m-preview__day"><b class="num">31</b>금</span>
+          <span class="m-preview__body">
+            <b>중간발표 리허설</b>
+            <span>${ic('clock')} 오후 4:30 · 전원</span>
+          </span>
+          ${avatars(PEOPLE.slice(0, 3), 22)}
         </div>
-      </div>
-      <div class="sl-cover-side">
-        <div class="sl-cover-side-label">상반기 한눈에 보기</div>
-        <div class="sl-cover-stat"><b>12,480</b><span>누적 구독자</span></div>
-        <div class="sl-cover-stat"><b>87%</b><span>3개월 재구독률</span></div>
-        <div class="sl-cover-stat"><b>62</b><span>고객 추천 지수(NPS)</span></div>
-      </div>
-    </div>
-  `;
+        <div class="m-preview__card m-preview__card--soft">
+          <span class="m-preview__day"><b class="num">3</b>월</span>
+          <span class="m-preview__body">
+            <b>디자인 시안 제출</b>
+            <span>${ic('bell')} 하루 전 알림 · 하린</span>
+          </span>
+        </div>
+      </section>
+
+      <section class="m-features">
+        <div class="m-feature">${ic('calendar')}<span><b>한 화면 일정</b>팀원 일정을 겹쳐 봐요</span></div>
+        <div class="m-feature">${ic('bell')}<span><b>마감 알림</b>하루 전, 한 시간 전</span></div>
+        <div class="m-feature">${ic('users')}<span><b>담당자 표시</b>누가 맡았는지 바로</span></div>
+      </section>
+    </div>`;
 }
 
-/** 슬라이드 본문 목업 */
-function buildSlideBody() {
-  const points = [
-    ['01', '취향 진단 도입', '가입 첫 화면에서 6문항으로 원두를 추천해 첫 주문 전환이 크게 올랐습니다.', '+31%', '첫 주문 전환율'],
-    ['02', '배송 주기 자율화', '1·2·4주 중 고객이 직접 고르게 바꾸자 해지 사유 1위가 사라졌습니다.', '−42%', '월 해지 건수'],
-    ['03', '로스터리 협업', '지역 로스터리 8곳과 한정 원두를 내면서 객단가가 함께 올랐습니다.', '₩23,800', '평균 주문 금액'],
-  ];
+/* ==========================================================
+   모바일 웹 ② 오늘 일정
+   ========================================================== */
 
-  document.getElementById('mockup-slide-body').innerHTML = `
-    <div class="mk-canvas sl sl-page">
-      <div class="sl-head">
-        <span class="sl-head-no">02</span>
+const TODAY = [
+  { t: '09:30', end: '09:45', title: '스탠드업', tag: '회의', tone: 'sub', place: '온라인', who: [0, 1, 2, 3], done: true },
+  { t: '11:00', end: '12:00', title: 'API 명세 리뷰', tag: '개발', tone: 'point', place: '3층 회의실', who: [1, 2], done: true },
+  { t: '14:00', end: '15:30', title: '사용자 인터뷰 2건', tag: '리서치', tone: 'secondary', place: '학생회관', who: [3] },
+  { t: '16:30', end: '17:30', title: '중간발표 리허설', tag: '발표', tone: 'primary', place: '공학관 204호', who: [0, 1, 2, 3], now: true },
+];
+
+function mobileToday({ ic, symbol }) {
+  const days = [['월', 27], ['화', 28], ['수', 29], ['목', 30], ['금', 31], ['토', 1], ['일', 2]];
+  return `
+    <div class="m-screen m-today">
+      ${statusBar(ic)}
+      <header class="m-head">
         <div>
-          <div class="sl-head-title">상반기에 달라진 세 가지</div>
-          <div class="sl-head-sub">핵심 요약 · 2026년 1월 – 6월</div>
+          <p class="m-caption">10월 31일 금요일</p>
+          <h1 class="m-title">오늘 일정</h1>
         </div>
+        <span class="m-head__right">${ic('bell')}${avatar(PEOPLE[0], 34)}</span>
+      </header>
+
+      <div class="m-week">
+        ${days.map(([d, n]) => `<span class="m-day ${n === 31 ? 'is-today' : ''}"><small>${d}</small><b class="num">${n}</b>${[28, 31, 2].includes(n) ? '<i></i>' : ''}</span>`).join('')}
       </div>
-      <div class="sl-points">
-        ${points.map(([no, title, desc, value, label]) => `
-          <div class="sl-point">
-            <span class="sl-point-no">${no}</span>
-            <div class="sl-point-title">${title}</div>
-            <div class="sl-point-desc">${desc}</div>
-            <div class="sl-point-metric"><b>${value}</b><span>${label}</span></div>
-          </div>
-        `).join('')}
+
+      <div class="m-progress">
+        <div class="m-progress__top"><b>오늘 할 일</b><span class="num">2 / 4</span></div>
+        <div class="m-progress__bar"><i style="width: 50%"></i></div>
+        <p>다음 일정까지 <b class="num">1시간 20분</b></p>
       </div>
-      <div class="sl-takeaway">
-        <b>하반기 과제</b>
-        <span>재구독 고객을 위한 멤버십 등급을 9월까지 출시하고, 해지 직전 고객에게 주기 변경을 먼저 제안합니다.</span>
-      </div>
-      ${slideFooter('02')}
-    </div>
-  `;
+
+      <ol class="m-list">
+        ${TODAY.map((e) => `
+          <li class="m-event ${e.done ? 'is-done' : ''} ${e.now ? 'is-now' : ''}">
+            <span class="m-event__time num">${e.t}<small>${e.end}</small></span>
+            <span class="m-event__card">
+              <span class="m-tag m-tag--${e.tone}">${e.tag}</span>
+              <b>${e.title}</b>
+              <span class="m-event__meta">${ic('map-pin')}${e.place}</span>
+              ${avatars(e.who.map((i) => PEOPLE[i]), 22)}
+              ${e.done ? `<span class="m-event__check">${ic('check')}</span>` : ''}
+            </span>
+          </li>`).join('')}
+      </ol>
+
+      <span class="m-fab">${ic('plus')}</span>
+      ${tabbar(ic, 0)}
+    </div>`;
 }
 
-/** 슬라이드 차트 목업 (막대 그래프 + 지표 카드) */
-function buildSlideChart() {
-  /* [월, 누적 구독자(천 명)] — 세로축 최대 15 */
-  const data = [['1월', 7.2], ['2월', 8.1], ['3월', 9.0], ['4월', 10.2], ['5월', 10.9], ['6월', 12.5]];
-  const MAX = 15;
-
-  document.getElementById('mockup-slide-chart').innerHTML = `
-    <div class="mk-canvas sl sl-page">
-      <div class="sl-head">
-        <span class="sl-head-no">03</span>
-        <div>
-          <div class="sl-head-title">월별 누적 구독자 추이</div>
-          <div class="sl-head-sub">단위: 천 명 · 6월에 연간 목표의 83% 달성</div>
-        </div>
-      </div>
-      <div class="sl-chart-row">
-        <div class="sl-chart">
-          <div class="sl-plot">
-            ${[15, 10, 5, 0].map((tick) => `
-              <div class="sl-grid" style="bottom:${(tick / MAX) * 100}%"><span>${tick}</span></div>
-            `).join('')}
-            <div class="sl-target" style="bottom:${(12 / MAX) * 100}%"><span>상반기 목표 12.0</span></div>
-            <div class="sl-bars">
-              ${data.map(([, value], i) => `
-                <div class="sl-bar${i === data.length - 1 ? ' is-peak' : ''}">
-                  <div class="sl-bar-fill" style="height:${(value / MAX) * 100}%"><span>${value.toFixed(1)}</span></div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-          <div class="sl-axis">${data.map(([month]) => `<span>${month}</span>`).join('')}</div>
-        </div>
-        <div class="sl-kpis">
-          <div class="sl-kpi"><span>반기 성장률</span><b>+73.6%</b><em>전년 동기 +41.2%</em></div>
-          <div class="sl-kpi"><span>월 평균 신규</span><b>1,060명</b><em>6월 1,240명으로 최고</em></div>
-          <div class="sl-kpi"><span>유료 전환율</span><b>38.4%</b><em>체험 구독 → 정기 구독</em></div>
-        </div>
-      </div>
-      ${slideFooter('03')}
-    </div>
-  `;
+function tabbar(ic, active) {
+  const tabs = [['home', '홈'], ['calendar', '달력'], ['chat', '대화'], ['user', '나']];
+  return `<nav class="m-tabbar">${tabs.map(([n, l], i) =>
+    `<span class="m-tab ${i === active ? 'is-active' : ''}">${ic(n)}<small>${l}</small></span>`).join('')}</nav>`;
 }
 
-/**
- * 웹사이트 목업: 브라우저 창 안의 SaaS 사이트 3페이지 (홈 · 제품 · 요금)
- * 어느 페이지를 보여줄지는 #mockup-web 의 data-page(0~2)로 정하고 CSS가 전환
- * → 화살표를 누르면 main.js가 data-page만 바꿈
- */
-function buildWeb() {
-  const columns = [
-    ['할 일', 3, [
-      ['온보딩 화면 카피 수정', '디자인', 'sub', '7월 18일'],
-      ['결제 실패 알림 메일', '개발', 'main', '7월 21일'],
-    ]],
-    ['진행 중', 2, [
-      ['3분기 로드맵 공유 자료', '기획', 'point', '오늘'],
-      ['검색 속도 개선', '개발', 'main', '7월 17일'],
-    ]],
-    ['완료', 5, [
-      ['사용자 인터뷰 8건 정리', '리서치', 'sub', '완료'],
-    ]],
-  ];
+/* ==========================================================
+   모바일 웹 ③ 일정 추가
+   ========================================================== */
 
-  const features = [
-    ['calendar', '일정이 알아서 맞춰집니다', '팀원 캘린더를 읽어 모두가 비는 시간을 먼저 제안합니다.'],
-    ['bolt', '회의록은 AI가 정리', '회의가 끝나면 결정 사항과 담당자를 할 일로 바로 옮깁니다.'],
-    ['lock', '기업용 보안', 'SSO와 감사 로그, 국내 리전 저장을 기본으로 제공합니다.'],
-  ];
+function mobileAdd({ ic }) {
+  const tags = [['회의', ''], ['개발', ''], ['리서치', ''], ['발표', 'is-on']];
+  return `
+    <div class="m-screen m-add">
+      ${statusBar(ic)}
+      <header class="m-navbar">
+        <span class="m-iconbtn">${ic('chevron-left')}</span>
+        <b>일정 추가</b>
+        <span class="m-link">임시 저장</span>
+      </header>
 
-  /* [이름, 가격, 단위, 설명, 포함 기능, 버튼 문구, 추천 여부] */
-  const plans = [
-    ['스타터', '무료', '', '5명 이하 팀이 가볍게 시작할 때',
-      ['보드 3개', '캘린더 연동', '할 일 무제한', '7일 활동 기록'], '무료로 시작', false],
-    ['팀', '9,000원', '/ 인 · 월', '일정과 회의를 한곳에서 관리할 때',
-      ['보드 무제한', 'AI 회의록 요약', '타임라인 · 간트', '게스트 초대 20명'], '14일 무료 체험', true],
-    ['비즈니스', '19,000원', '/ 인 · 월', '보안과 관리 기능이 필요할 때',
-      ['팀 요금제의 모든 기능', 'SSO · 감사 로그', '국내 리전 저장', '전담 매니저'], '도입 문의', false],
-  ];
+      <div class="m-form">
+        <label class="m-field">
+          <span>제목</span>
+          <span class="m-input is-focus">중간발표 리허설<i class="m-caret"></i></span>
+        </label>
 
-  const footer = `
-    <div class="web-footer">
-      <span>© 2026 Planit Inc.</span>
-      <span>이용약관 · 개인정보처리방침 · 고객센터</span>
-    </div>
-  `;
-
-  document.getElementById('mockup-web').innerHTML = `
-    <div class="mk-canvas web">
-      <div class="web-chrome">
-        <div class="web-dots"><i></i><i></i><i></i></div>
-        <div class="web-chrome-nav">${ICONS.back}${ICONS.forward}${ICONS.reload}</div>
-        <div class="web-url">
-          ${ICONS.lock}
-          <span data-view="0">planit.team</span>
-          <span data-view="1">planit.team/product</span>
-          <span data-view="2">planit.team/pricing</span>
-        </div>
-      </div>
-
-      <div class="web-nav">
-        <div class="web-logo"><i></i>Planit</div>
-        <div class="web-links">
-          <span data-view="1">제품</span><span>솔루션</span><span data-view="2">요금</span><span>고객 사례</span><span>블로그</span>
-        </div>
-        <div class="web-nav-actions">
-          <span class="web-login">로그인</span>
-          <span class="web-btn web-btn-primary web-btn-sm">무료로 시작</span>
-        </div>
-      </div>
-
-      <div class="web-page">
-
-        <!-- 1페이지: 홈 -->
-        <div class="web-view" data-view="0">
-          <div class="web-hero">
-            <div class="web-hero-copy">
-              <div class="web-badge"><i></i>새 기능 · AI 회의록 요약 출시</div>
-              <div class="web-h1">팀의 일정이<br>한 화면에 모이는 곳</div>
-              <div class="web-lead">할 일, 회의, 마감을 따로 관리하지 마세요. Planit은 팀의 한 주를 하나의 보드로 정리해 줍니다.</div>
-              <div class="web-hero-actions">
-                <span class="web-btn web-btn-primary">14일 무료 체험</span>
-                <span class="web-btn web-btn-ghost">${ICONS.play}2분 데모 보기</span>
-              </div>
-              <div class="web-proof">
-                <div class="web-avatars"><i>지</i><i>민</i><i>서</i><i>+</i></div>
-                <span><b>★ 4.9</b> · 2,300개 팀이 매일 사용합니다</span>
-              </div>
-            </div>
-
-            <div class="web-board">
-              <div class="web-board-head">
-                <b>7월 3주차 스프린트</b>
-                <span class="web-seg"><em class="is-on">보드</em><em>캘린더</em><em>타임라인</em></span>
-              </div>
-              <div class="web-board-cols">
-                ${columns.map(([name, count, tasks]) => `
-                  <div class="web-col">
-                    <div class="web-col-head">${name}<span>${count}</span></div>
-                    ${tasks.map(([title, tag, tone, due]) => `
-                      <div class="web-task">
-                        <span class="web-tag tone-${tone}">${tag}</span>
-                        <div class="web-task-title">${title}</div>
-                        <div class="web-task-meta">${ICONS.calendar}${due}</div>
-                      </div>
-                    `).join('')}
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          </div>
-
-          <div class="web-logos">
-            <span>함께하는 팀</span>
-            <b>NORDIK</b><b>모아랩</b><b>Fieldnote</b><b>오브제 스튜디오</b><b>LUMEN</b>
-          </div>
-        </div>
-
-        <!-- 2페이지: 제품 -->
-        <div class="web-view" data-view="1">
-          <div class="web-page-head">
-            <div>
-              <div class="web-eyebrow"><i></i>제품</div>
-              <div class="web-h2">회의는 줄이고, 일은 앞으로</div>
-              <div class="web-sub">일정 조율부터 회의록, 후속 작업까지 Planit 하나로 이어집니다.</div>
-            </div>
-          </div>
-
-          <div class="web-features">
-            ${features.map(([name, title, desc]) => `
-              <div class="web-feature">
-                <div class="web-feature-icon">${ICONS[name]}</div>
-                <div class="web-feature-title">${title}</div>
-                <div class="web-feature-desc">${desc}</div>
-              </div>
-            `).join('')}
-          </div>
-
-          <div class="web-cta">
-            <div>
-              <div class="web-cta-title">이번 주 회의부터 줄여 보세요</div>
-              <div class="web-cta-desc">카드 등록 없이 5분이면 팀 보드가 만들어집니다.</div>
-            </div>
-            <span class="web-btn web-btn-invert">무료로 시작하기</span>
-          </div>
-          ${footer}
-        </div>
-
-        <!-- 3페이지: 요금 -->
-        <div class="web-view" data-view="2">
-          <div class="web-page-head">
-            <div>
-              <div class="web-eyebrow"><i></i>요금</div>
-              <div class="web-h2">팀 크기에 맞는 요금제</div>
-              <div class="web-sub">모든 요금제는 14일 동안 무료로 써 볼 수 있습니다.</div>
-            </div>
-            <span class="web-seg"><em>월간 결제</em><em class="is-on">연간 결제 −20%</em></span>
-          </div>
-
-          <div class="web-plans">
-            ${plans.map(([name, price, unit, desc, items, cta, best]) => `
-              <div class="web-plan${best ? ' is-best' : ''}">
-                <div class="web-plan-name">${name}${best ? '<span class="web-plan-badge">가장 인기</span>' : ''}</div>
-                <div class="web-plan-price">${price}<small>${unit}</small></div>
-                <div class="web-plan-desc">${desc}</div>
-                <div class="web-plan-list">
-                  ${items.map((item) => `<div>${ICONS.check}${item}</div>`).join('')}
-                </div>
-                <span class="web-btn ${best ? 'web-btn-invert' : 'web-btn-ghost'}">${cta}</span>
-              </div>
-            `).join('')}
-          </div>
-          ${footer}
-        </div>
-
-      </div>
-    </div>
-  `;
-}
-
-/**
- * 모바일 앱 목업: 가계부 앱 3화면 (홈 · 분석 · 카드)
- * 웹 목업과 같은 방식 — #mockup-app 의 data-page(0~2)에 따라 CSS가 화면과 하단 탭을 전환
- */
-function buildApp() {
-  const actions = [['send', '송금'], ['plus', '충전'], ['swap', '환전'], ['scan', '스캔']];
-
-  const history = [
-    ['coffee', 'main',  '프릳츠 원서점',   '카페 · 오후 2:14',  '−5,500원'],
-    ['income', 'point', '7월 급여',        '입금 · 오전 9:00',  '+3,240,000원'],
-    ['bag',    'sub',   '마켓컬리',        '식비 · 어제',       '−38,900원'],
-    ['bus',    'main',  '후불 교통카드',   '교통 · 어제',       '−2,800원'],
-  ];
-
-  /* [색, 이름, 비율(%), 금액] — 합계 1,284,500원 */
-  const categories = [
-    ['main',  '식비', 38, '488,110원'],
-    ['point', '쇼핑', 24, '308,280원'],
-    ['sub',   '교통', 16, '205,520원'],
-    ['rest',  '기타', 22, '282,590원'],
-  ];
-
-  const upcoming = [
-    ['play', 'point', '음악 스트리밍', '정기 결제 · 7월 17일', '−10,900원'],
-    ['bolt', 'main',  '전기 요금',     '자동 이체 · 7월 20일', '−34,200원'],
-    ['user', 'sub',   '헬스장 회원권', '정기 결제 · 7월 25일', '−59,000원'],
-  ];
-
-  const cardActions = [['lock', '일시 정지'], ['card', '한도 설정'], ['calendar', '명세서']];
-
-  /* 하단 탭 — 앞의 세 개가 화살표로 넘기는 화면과 짝 */
-  const tabs = [['home', '홈'], ['chart', '분석'], ['card', '카드'], ['user', '내 정보']];
-
-  const item = ([name, tone, title, meta, amount]) => `
-    <div class="app-item">
-      <div class="app-item-icon tone-${tone}">${ICONS[name]}</div>
-      <div class="app-item-text"><b>${title}</b><span>${meta}</span></div>
-      <div class="app-item-amount${amount.startsWith('+') ? ' is-income' : ''}">${amount}</div>
-    </div>
-  `;
-
-  document.getElementById('mockup-app').innerHTML = `
-    <div class="mk-canvas app">
-      <div class="app-screen">
-        <div class="app-status">
-          <span>9:41</span>
-          <i class="app-island"></i>
-          <span class="app-status-icons">
-            <svg viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
-            <svg viewBox="0 0 27 13" fill="none"><rect x=".5" y=".5" width="22" height="12" rx="3.5" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="9" rx="2" fill="currentColor"/><path d="M24.5 4.5v4c.8-.3 1.5-1 1.5-2s-.7-1.7-1.5-2z" fill="currentColor" opacity=".5"/></svg>
+        <div class="m-field">
+          <span>날짜와 시간</span>
+          <span class="m-input">${ic('calendar')}11월 3일 월요일</span>
+          <span class="m-timepair">
+            <span class="m-input m-input--sm num">${ic('clock')}16:30</span>
+            <span class="m-timepair__dash"></span>
+            <span class="m-input m-input--sm num">17:30</span>
           </span>
         </div>
 
-        <!-- 1화면: 홈 -->
-        <div class="app-view" data-view="0">
-          <div class="app-top">
-            <div>
-              <div class="app-hello">안녕하세요, 서연님</div>
-              <div class="app-date">7월 14일 화요일</div>
-            </div>
-            <div class="app-bell">${ICONS.bell}<i></i></div>
-          </div>
-
-          <div class="app-balance">
-            <div class="app-balance-top">
-              <span>이번 달 지출</span>
-              <span class="app-balance-chip">지난달보다 −12%</span>
-            </div>
-            <div class="app-balance-amount">1,284,500<small>원</small></div>
-            <div class="app-progress"><i style="width:64%"></i></div>
-            <div class="app-balance-foot"><span>예산 2,000,000원</span><span>64% 사용</span></div>
-          </div>
-
-          <div class="app-actions">
-            ${actions.map(([name, label]) => `
-              <div class="app-action"><div class="app-action-icon">${ICONS[name]}</div>${label}</div>
-            `).join('')}
-          </div>
-
-          <div class="app-section-head"><b>최근 내역</b><span>전체 보기</span></div>
-          <div class="app-history">${history.map(item).join('')}</div>
+        <div class="m-field">
+          <span>분류</span>
+          <span class="m-chips">${tags.map(([t, on]) => `<span class="m-chip ${on}">${on ? ic('check') : ''}${t}</span>`).join('')}</span>
         </div>
 
-        <!-- 2화면: 분석 -->
-        <div class="app-view" data-view="1">
-          <div class="app-top">
-            <div>
-              <div class="app-hello">지출 분석</div>
-              <div class="app-date">2026년 7월 1일 – 14일</div>
-            </div>
-            <div class="app-month">7월${ICONS.down}</div>
-          </div>
-
-          <div class="app-donut-card">
-            <div class="app-donut">
-              ${donut(categories.map(([tone, , percent]) => [tone, percent]))}
-              <div class="app-donut-center"><span>총 지출</span><b>1,284,500원</b></div>
-            </div>
-          </div>
-
-          <div class="app-section-head"><b>카테고리별</b><span>금액순</span></div>
-          <div class="app-cats">
-            ${categories.map(([tone, name, percent, amount]) => `
-              <div class="app-cat">
-                <div class="app-cat-row">
-                  <i class="tone-${tone}"></i><b>${name}</b><span>${percent}%</span><em>${amount}</em>
-                </div>
-                <div class="app-cat-bar"><i class="tone-${tone}" style="width:${(percent / 38) * 100}%"></i></div>
-              </div>
-            `).join('')}
-          </div>
-
-          <div class="app-insight">
-            <div class="app-insight-icon">${ICONS.bolt}</div>
-            <div><b>식비가 지난달보다 8% 줄었어요</b><span>이 속도라면 예산 안에서 한 달을 마칩니다.</span></div>
-          </div>
+        <div class="m-field">
+          <span>담당자</span>
+          <span class="m-people">${PEOPLE.map((p) => avatar(p, 36)).join('')}<span class="m-avatar m-avatar--add" style="--size: 36px">${ic('plus')}</span></span>
         </div>
 
-        <!-- 3화면: 카드 -->
-        <div class="app-view" data-view="2">
-          <div class="app-top">
-            <div>
-              <div class="app-hello">내 카드</div>
-              <div class="app-date">카드 2장 · 이번 달 842,300원</div>
-            </div>
-            <div class="app-bell">${ICONS.plus}</div>
-          </div>
-
-          <div class="app-cards">
-            <div class="app-card-back"></div>
-            <div class="app-card-face">
-              <div class="app-card-row"><b>Pocket</b><span>체크카드</span></div>
-              <div class="app-card-chip"></div>
-              <div class="app-card-number">••••&ensp;••••&ensp;••••&ensp;4821</div>
-              <div class="app-card-row app-card-foot"><span>KIM SEOYEON</span><span>08 / 29</span></div>
-            </div>
-          </div>
-
-          <div class="app-limit">
-            <div class="app-limit-row"><span>이번 달 사용</span><b>842,300원</b></div>
-            <div class="app-limit-bar"><i style="width:56%"></i></div>
-            <div class="app-limit-row app-limit-foot"><span>한도 1,500,000원</span><span>56%</span></div>
-          </div>
-
-          <div class="app-pills">
-            ${cardActions.map(([name, label]) => `<div class="app-pill">${ICONS[name]}${label}</div>`).join('')}
-          </div>
-
-          <div class="app-section-head"><b>다가오는 결제</b><span>3건</span></div>
-          <div class="app-history">${upcoming.map(item).join('')}</div>
+        <div class="m-row">
+          <span><b>하루 전 알림</b><small>담당자 모두에게 보내요</small></span>
+          <span class="m-switch is-on"><i></i></span>
         </div>
 
-        <div class="app-tabbar">
-          ${tabs.map(([name, label], i) => `
-            <div class="app-tab" data-view="${i}">${ICONS[name]}${label}</div>
-          `).join('')}
-        </div>
-        <i class="app-home-indicator"></i>
+        <label class="m-field">
+          <span>메모</span>
+          <span class="m-input m-input--area">발표 자료 최종본은 일요일 밤까지 공유 폴더에 올려 주세요.</span>
+        </label>
       </div>
-    </div>
-  `;
+
+      <div class="m-bottom">
+        <span class="m-btn m-btn--primary m-btn--block">일정 추가</span>
+      </div>
+    </div>`;
 }
 
-/**
- * 도넛 차트 SVG — 조각마다 원 하나를 그리고 stroke-dasharray로 길이를 정함
- * @param {[string, number][]} segments - [색 이름, 비율(%)] 배열 (합계 100)
- */
-function donut(segments) {
-  const RADIUS = 80;
-  const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-  const GAP = 5;   /* 조각 사이 틈 */
+/* ==========================================================
+   슬라이드 ① 표지
+   ========================================================== */
 
-  let start = 0;
-  const circles = segments.map(([tone, percent]) => {
-    const length = (percent / 100) * CIRCUMFERENCE;
-    const circle = `<circle class="tone-${tone}" cx="100" cy="100" r="${RADIUS}"
-      stroke-dasharray="${length - GAP} ${CIRCUMFERENCE - length + GAP}" stroke-dashoffset="${-start}"/>`;
-    start += length;
-    return circle;
-  }).join('');
+function slideCover({ name, symbol }) {
+  return `
+    <div class="s-slide s-cover">
+      <div class="s-cover__main">
+        <span class="s-brand">${symbol(36)}<b>${name}</b></span>
+        <div>
+          <p class="s-eyebrow">졸업작품 3팀 · 중간 발표</p>
+          <h1 class="s-display">팀 프로젝트 일정을<br />한곳에 모으다</h1>
+          <p class="s-lead">단톡방에 흩어진 회의와 마감을 한 화면으로</p>
+        </div>
+        <p class="s-meta"><span class="num">2026. 10. 31</span><span>김지수 · 이민호 · 박하린 · 최도윤</span></p>
+      </div>
+      <div class="s-cover__art" aria-hidden="true">
+        <span class="s-cover__big">${symbol(220)}</span>
+        <span class="s-cover__ring"></span>
+        <span class="s-cover__dot s-cover__dot--a"></span>
+        <span class="s-cover__dot s-cover__dot--b"></span>
+      </div>
+    </div>`;
+}
 
-  return `<svg viewBox="0 0 200 200" fill="none" stroke-width="22" stroke-linecap="butt"><g transform="rotate(-90 100 100)">${circles}</g></svg>`;
+/* ==========================================================
+   슬라이드 ② 문제와 해결
+   ========================================================== */
+
+function slideProblem({ name, ic }) {
+  const problems = [
+    ['단톡방에 묻히는 일정', '공지 하나가 대화 200개 아래로 내려간다'],
+    ['누가 맡았는지 모름', '회의에서 정한 일이 담당자 없이 끝난다'],
+    ['마감 직전에야 안다', '제출 전날 밤에 처음 확인하는 일이 반복된다'],
+  ];
+  const fixes = [
+    ['calendar', '한 화면 일정', '팀원 일정을 겹쳐 보고 빈 시간을 찾는다'],
+    ['users', '담당자 표시', '모든 일정에 담당자가 붙는다'],
+    ['bell', '마감 알림', '하루 전, 한 시간 전에 담당자에게'],
+  ];
+  return `
+    <div class="s-slide s-problem">
+      <header class="s-head">
+        <p class="s-eyebrow">02 · 문제와 해결</p>
+        <h2 class="s-title">일정은 대화가 아니라 화면에 있어야 한다</h2>
+      </header>
+      <div class="s-cols">
+        <ol class="s-problems">
+          ${problems.map(([t, d], i) => `<li><span class="num">0${i + 1}</span><span><b>${t}</b>${d}</span></li>`).join('')}
+        </ol>
+        <span class="s-arrow">${ic('arrow-right')}</span>
+        <div class="s-fixes">
+          ${fixes.map(([n, t, d]) => `<div class="s-fix">${ic(n)}<span><b>${t}</b>${d}</span></div>`).join('')}
+        </div>
+      </div>
+      ${slideFoot(name, 2)}
+    </div>`;
+}
+
+/* ==========================================================
+   슬라이드 ③ 성과
+   ========================================================== */
+
+function slideResult({ name }) {
+  const weeks = [['1주', 62], ['2주', 71], ['3주', 84], ['4주', 91]];
+  const kpis = [['91%', '마감을 지킨 일정', '1주 차 62%'], ['38%', '줄어든 회의 시간', '주당 3.4 → 2.1시간'], ['4.6', '팀원 만족도', '5점 만점, 16명']];
+  return `
+    <div class="s-slide s-result">
+      <header class="s-head">
+        <p class="s-eyebrow">03 · 4주 동안 써 보니</p>
+        <h2 class="s-title">마감을 지킨 일정이 <em>62%에서 91%로</em></h2>
+      </header>
+      <div class="s-result__body">
+        <div class="s-chart" role="img" aria-label="주차별 마감 준수율 62, 71, 84, 91퍼센트">
+          <div class="s-chart__grid"><i></i><i></i><i></i><i></i></div>
+          ${weeks.map(([w, v], i) => `
+            <div class="s-bar ${i === weeks.length - 1 ? 'is-last' : ''}" style="--v: ${v}">
+              <b class="num">${v}%</b><i></i><small>${w}</small>
+            </div>`).join('')}
+        </div>
+        <div class="s-kpis">
+          ${kpis.map(([v, l, d]) => `<div class="s-kpi"><b class="num">${v}</b><span>${l}</span><small>${d}</small></div>`).join('')}
+        </div>
+      </div>
+      ${slideFoot(name, 3)}
+    </div>`;
+}
+
+function slideFoot(name, n) {
+  return `<footer class="s-foot"><span>${name}</span><span class="num">${n} / 3</span></footer>`;
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }

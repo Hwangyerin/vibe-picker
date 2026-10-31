@@ -24,6 +24,7 @@ import { toast } from './ui/toast.js';
 import { applyPaletteTheme, resetPaletteTheme, getUiMode, setUiMode } from './ui/theme.js';
 import { defaultBrand, brandTokens, applyBrandTokens, brandPrimary } from './brand.js';
 import { renderBoard } from './board.js';
+import { renderMockup, stepMockup, refitMockup } from './mockups.js';
 import { initPanel, renderPanel } from './panel.js';
 import { paletteMood, rankFonts, loadFont, loadPreviews } from './fonts.js';
 import { loadIconSet, ICON_SETS, ICON_WEIGHTS } from './icons.js';
@@ -89,13 +90,22 @@ document.addEventListener('DOMContentLoaded', () => {
     onChange: (v) => {
       setState({ canvasView: v });
       showCanvasView(v);
+      if (v !== 'board') refitMockup(v);
     },
   });
 
   modeSeg = initSegmented(document.getElementById('preview-mode-seg'), {
     onChange: (v) => {
-      setState({ mode: v, isDirty: true });
-      updateUI();
+      /* 라이트·다크는 두 화면이 겹쳐 사라지듯(크로스페이드) 바뀐다 (지원하는 브라우저만) */
+      const apply = () => {
+        setState({ mode: v, isDirty: true });
+        updateUI();
+      };
+      if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.startViewTransition(apply);
+      } else {
+        apply();
+      }
     },
   });
 
@@ -108,6 +118,13 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('popstate', handlePopState);
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') cancelEyedropper();
+    /* ←→: 모바일 웹·슬라이드 넘기기 (입력창·슬라이더·세그먼트 위에서는 그쪽이 쓴다) */
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && state.view === 'work'
+        && state.canvasView !== 'board' && !document.querySelector('dialog[open]')
+        && !e.target.closest('input, textarea, [role="radiogroup"], [role="listbox"], .select')) {
+      e.preventDefault();
+      stepMockup(state.canvasView, e.key === 'ArrowLeft' ? -1 : 1);
+    }
   });
 
   /* 새로고침 복원은 13단계. 지금은 작업 주소로 열리면 첫 화면으로 정리 */
@@ -202,9 +219,10 @@ function renderBrand(displayRoles, displayPalette) {
   );
   applyBrandTokens(document.getElementById('canvas-stage'), tokens);
 
-  renderBoard(document.getElementById('board-root'), {
-    tokens, brand, palette: displayPalette, icons: currentIcons(brand),
-  });
+  const icons = currentIcons(brand);
+  renderBoard(document.getElementById('board-root'), { tokens, brand, palette: displayPalette, icons });
+  renderMockup('mobile', document.getElementById('mobile-root'), { brand, icons });
+  renderMockup('slides', document.getElementById('slides-root'), { brand, icons });
 
   const autoAccent = Math.max(0, displayPalette.indexOf(displayRoles.main));
   renderPanel(brand, { palette: displayPalette, autoAccent, primary: tokens.primary, displayRank, bodyRank, autoFont });
