@@ -1,0 +1,202 @@
+/* ==========================================================
+   drawer.css — 서랍(오른쪽에서 들어오는 창)과 저장한 브랜드 카드
+   ========================================================== */
+
+/* ---------- 서랍 창 ---------- */
+
+.drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(400px, 100vw);
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-left: var(--border-width) solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-overlay);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.drawer[open] {
+  animation: vp-drawer-in var(--dur-slow) var(--ease-sheet) both;
+}
+
+.drawer[data-closing] {
+  animation: vp-drawer-out var(--dur-base) var(--ease-in-out) both;
+}
+
+.drawer::backdrop {
+  background: var(--backdrop);
+  animation: vp-fade-in var(--dur-slow) var(--ease-out) both;
+}
+
+.drawer[data-closing]::backdrop {
+  animation: vp-fade-out var(--dur-base) var(--ease-out) both;
+}
+
+@keyframes vp-drawer-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes vp-drawer-out {
+  from { transform: translateX(0); }
+  to   { transform: translateX(100%); }
+}
+
+.drawer__head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-5) var(--space-3);
+  background: var(--surface);
+}
+
+.drawer__title {
+  font-size: var(--text-lg);
+}
+
+.drawer__sub {
+  margin-top: var(--space-0-5);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.drawer__list {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0 var(--space-5) var(--space-6);
+}
+
+.drawer__empty {
+  margin: var(--space-16) auto 0;
+  padding: 0 var(--space-6);
+}
+
+/* ---------- 헤더의 서랍 개수 ---------- */
+
+.drawer-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+}
+
+/* ---------- 브랜드 카드 (서랍·첫 화면 공통) ---------- */
+
+.brand-card {
+  position: relative;
+}
+
+.brand-card__load {
+  display: grid;
+  width: 100%;
+  overflow: hidden;
+  text-align: left;
+}
+
+.brand-card__strip {
+  display: flex;
+  height: var(--space-10);
+}
+
+.brand-card__strip i {
+  flex: 1;
+  background: var(--c);
+}
+
+.brand-card__body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  min-width: 0;
+}
+
+.brand-card__mark {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: var(--control-md);
+  height: var(--control-md);
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--c);
+  color: var(--fg);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-md);
+}
+
+.brand-card__mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--surface);
+}
+
+.brand-card__text {
+  display: grid;
+  gap: var(--space-0-5);
+  min-width: 0;
+}
+
+.brand-card__text b {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.brand-card__text small {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 지우기: 카드 오른쪽 아래, 마우스를 올리거나 포커스가 오면 보인다 */
+.brand-card__remove {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-3);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.brand-card:hover .brand-card__remove,
+.brand-card__remove:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .brand-card__remove { opacity: 1; }
+}
+
+/* ---------- 첫 화면의 저장한 브랜드 ---------- */
+
+.saved {
+  margin-top: var(--space-12);
+}
+
+.saved__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}

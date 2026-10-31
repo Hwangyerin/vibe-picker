@@ -3,8 +3,8 @@
    사진 → 후보 색 → 팔레트 5색 → 색 역할 → 화면 갱신 흐름을 잇는다
    ========================================================== */
 
-import { state, setState } from './state.js';
-import { initUpload, setOnImage, makePreview } from './upload.js';
+import { state, setState, subscribe } from './state.js';
+import { initUpload, setOnImage, makePreview, restoreImage } from './upload.js';
 import { extractCandidates } from './extract.js';
 import { composePalette } from './palette.js';
 import {
@@ -26,6 +26,8 @@ import { defaultBrand, brandTokens, applyBrandTokens, brandPrimary } from './bra
 import { renderBoard } from './board.js';
 import { renderMockup, stepMockup, refitMockup } from './mockups.js';
 import { openExportDialog } from './export-dialog.js';
+import { saveCard, saveSession, loadSession } from './storage.js';
+import { initDrawer, refreshDrawerCount, renderHomeSaved } from './drawer.js';
 import { initPanel, renderPanel } from './panel.js';
 import { paletteMood, rankFonts, loadFont, loadPreviews } from './fonts.js';
 import { loadIconSet, ICON_SETS, ICON_WEIGHTS } from './icons.js';
@@ -62,6 +64,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   setState({ brand: defaultBrand() });
   initPanel(handleBrandChange);
+  initDrawer(handleCardLoad);
+
+  /* 저장 */
+  document.getElementById('btn-save').addEventListener('click', handleSave);
+
+  /* 상태가 바뀔 때마다 저장 버튼 상태와 새로고침 복원용 임시 보관 */
+  subscribe(() => {
+    syncSaveButton();
+    saveSession(sessionSnapshot());
+  });
+  window.addEventListener('pagehide', () => saveSession(sessionSnapshot(), true));
 
   document.getElementById('btn-repick').addEventListener('click', handleRepick);
   document.getElementById('btn-keep').addEventListener('click', handleKeep);
@@ -133,8 +146,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /* 새로고침 복원은 13단계. 지금은 작업 주소로 열리면 첫 화면으로 정리 */
-  clearWorkHash();
+  /* 새로고침 전에 하던 작업이 있으면 되살린다 */
+  restoreSession();
 });
 
 /* ==========================================================
@@ -425,6 +438,151 @@ function handleKeptRemove(i) {
 }
 
 /* ==========================================================
+   저장 · 서랍 · 새로고침 복원
+   ========================================================== */
+
+/** 서랍에 넣을 카드 (사진은 넣지 않는다) */
+function cardSnapshot() {
+  const { palette, myPicks, roles, contrastOffset, mode, paletteStyle, brand } = state;
+  return { palette, myPicks: [...myPicks], roles, contrastOffset, mode, paletteStyle, brand };
+}
+
+let savedTimer = 0;
+
+function handleSave() {
+  if (!state.roles) return;
+  const result = saveCard(cardSnapshot(), state.loadedCardKey);
+  if (!result.ok) {
+    toast(result.reason === 'full'
+      ? '서랍이 가득 찼어요 (20개). 서랍에서 오래된 브랜드를 지운 뒤 저장해 주세요'
+      : '브라우저 저장 공간이 부족해 저장하지 못했어요. 심볼 이미지를 빼고 다시 해 보세요', { icon: 'alert', duration: 3200 });
+    return;
+  }
+  const overwrite = Boolean(state.loadedCardKey);
+  setState({ loadedCardKey: result.key, isDirty: false });
+  refreshDrawerCount();
+  renderHomeSaved();
+
+  /* 버튼이 잠깐 "저장됨"으로 */
+  const btn = document.getElementById('btn-save');
+  btn.dataset.state = 'done';
+  btn.querySelector('use').setAttribute('href', btn.querySelector('use').getAttribute('href').replace('#bookmark', '#check'));
+  btn.lastChild.textContent = '저장됨';
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(() => {
+    delete btn.dataset.state;
+    btn.querySelector('use').setAttribute('href', btn.querySelector('use').getAttribute('href').replace('#check', '#bookmark'));
+    btn.lastChild.textContent = '저장';
+  }, 1600);
+  toast(overwrite ? '서랍의 브랜드를 고친 내용으로 바꿨어요' : '서랍에 저장했어요', { tone: 'success' });
+}
+
+/** 저장할 변경이 있을 때만 저장 버튼을 켠다 */
+function syncSaveButton() {
+  const btn = document.getElementById('btn-save');
+  if (btn.dataset.state === 'done') return;
+  btn.disabled = !(state.roles && state.isDirty);
+}
+
+/** 서랍(또는 첫 화면)에서 카드 불러오기 */
+async function handleCardLoad(key, card) {
+  if (state.view === 'work' && state.isDirty && key !== state.loadedCardKey) {
+    const ok = await confirmDialog({
+      title: '저장하지 않은 작업이 있어요',
+      body: '불러오면 지금 화면의 팔레트와 브랜드 설정이 사라져요.',
+      confirmText: '불러오기',
+      cancelText: '계속 작업하기',
+    });
+    if (!ok) return;
+  }
+  cancelEyedropper();
+  resetPalette();
+  drawPhoto(null);
+  setState({
+    view: 'work',
+    image: null,
+    previewImage: null,
+    candidates: [],
+    attempt: 0,
+    recentSignatures: [],
+    palette: card.palette,
+    myPicks: new Set(card.myPicks ?? []),
+    roles: card.roles ?? assignRoles(card.palette),
+    contrastOffset: card.contrastOffset ?? 0,
+    mode: card.mode ?? 'light',
+    paletteStyle: card.paletteStyle ?? 'natural',
+    /* v1 카드에는 브랜드 설정이 없다 → 기본값 */
+    brand: { ...defaultBrand(), ...(card.brand ?? {}) },
+    paletteHistory: [],
+    loadedCardKey: key,
+    isDirty: false,
+  });
+  syncSegments();
+  showView('work');
+  updateUI();
+  toast(card.brand ? `${card.brand.wordmark || '브랜드'}를 불러왔어요` : '실습 때 저장한 팔레트를 불러왔어요. 브랜드 설정은 기본값이에요', { icon: 'drawer' });
+}
+
+/** 새로고침 복원용 상태 (첫 화면이면 비운다) */
+function sessionSnapshot() {
+  if (state.view !== 'work' || !state.roles) return null;
+  const s = state;
+  return {
+    ...cardSnapshot(),
+    previewImage: s.image ? s.previewImage : null,
+    candidates: s.candidates,
+    attempt: s.attempt,
+    recentSignatures: s.recentSignatures,
+    paletteHistory: s.paletteHistory,
+    loadedCardKey: s.loadedCardKey,
+    isDirty: s.isDirty,
+    canvasView: s.canvasView,
+  };
+}
+
+async function restoreSession() {
+  const saved = loadSession();
+  if (!saved?.palette?.length || !saved.roles) {
+    clearWorkHash();
+    return;
+  }
+  const img = saved.previewImage ? await restoreImage(saved.previewImage) : null;
+  drawPhoto(img);
+  setState({
+    view: 'work',
+    image: img,
+    previewImage: img ? saved.previewImage : null,
+    candidates: img ? saved.candidates ?? [] : [],
+    attempt: saved.attempt ?? 0,
+    recentSignatures: saved.recentSignatures ?? [],
+    palette: saved.palette,
+    myPicks: new Set(saved.myPicks ?? []),
+    roles: saved.roles,
+    contrastOffset: saved.contrastOffset ?? 0,
+    mode: saved.mode ?? 'light',
+    paletteStyle: saved.paletteStyle ?? 'natural',
+    brand: { ...defaultBrand(), ...(saved.brand ?? {}) },
+    paletteHistory: saved.paletteHistory ?? [],
+    loadedCardKey: saved.loadedCardKey ?? null,
+    isDirty: Boolean(saved.isDirty),
+    canvasView: saved.canvasView ?? 'board',
+  });
+  syncSegments();
+  showView('work', { push: !isWorkHash() });
+  showCanvasView(state.canvasView);
+  updateUI();
+  if (state.canvasView !== 'board') refitMockup(state.canvasView);
+}
+
+/** 세그먼트들을 상태에 맞춘다 (불러오기·복원 뒤) */
+function syncSegments() {
+  styleSeg.set(state.paletteStyle);
+  modeSeg.set(state.mode);
+  canvasSeg.set(state.canvasView);
+  showCanvasView(state.canvasView);
+}
+
+/* ==========================================================
    첫 화면으로
    ========================================================== */
 
@@ -473,6 +631,7 @@ function resetToHome() {
   });
   resetPaletteTheme();
   clearLogo();
+  renderHomeSaved();
   showView('home');
   clearWorkHash();
   /* 새 화면이므로 이전 화면의 포커스(로고 링 등)를 지운다 */

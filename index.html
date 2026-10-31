@@ -25,6 +25,8 @@
   <link rel="stylesheet" href="css/layout.css" />
   <!-- 왼쪽 레일: 사진, 팔레트, 색 역할 -->
   <link rel="stylesheet" href="css/rail.css" />
+  <!-- 서랍과 저장한 브랜드 카드 -->
+  <link rel="stylesheet" href="css/drawer.css" />
   <!-- 오른쪽 브랜드 설정 패널 -->
   <link rel="stylesheet" href="css/panel.css" />
   <!-- 가운데 브랜드 보드 (브랜드 변수 --b-*만 씀) -->
@@ -96,6 +98,12 @@
           </button>
         </li>
       </ul>
+    </section>
+
+    <!-- 저장한 브랜드 (drawer.js가 채운다. 없으면 숨김) -->
+    <section class="saved" id="home-saved" aria-labelledby="saved-title" hidden>
+      <h2 class="samples__title" id="saved-title">저장한 브랜드</h2>
+      <ul class="saved__list"></ul>
     </section>
   </main>
 
