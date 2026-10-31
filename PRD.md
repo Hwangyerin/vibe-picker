@@ -208,8 +208,8 @@ VibePicker 자체의 디자인 시스템은 `docs/design-system.md`에 정의하
   - `js/icons.js`: 아이콘 세트 불러오기와 캐시
   - `js/board.js`: 브랜드 보드 그리기
   - `js/mockups.js`: 모바일 웹·슬라이드 그리기, 넘기기
-  - `js/export.js`: 프롬프트·CSS·Tailwind·JSON 만들기
-  - `js/storage.js`: 저장, 서랍, localStorage, 새로고침 복원
+  - `js/export.js`: 프롬프트·CSS·Tailwind·JSON 만들기 / `js/export-dialog.js`: 내보내기 창
+  - `js/storage.js`: 서랍(localStorage)·새로고침 복원(sessionStorage) 읽고 쓰기 / `js/drawer.js`: 서랍 창·첫 화면 저장한 브랜드 / `css/drawer.css`
   - `js/chips.js`: 사진 영역, 팔레트 칩, 복사, 스포이드 / `js/rail.js`: 색 역할·대비·시안 그리기 / `js/view.js`: 화면 전환·뒤로 가기
   - `js/ui/`: `dialog.js`(확인 창), `sheet.js`(바텀 시트), `toast.js`(알림), `theme.js`(사진에 물드는 UI)
   - `docs/design-system.md`: VibePicker 디자인 시스템 문서
