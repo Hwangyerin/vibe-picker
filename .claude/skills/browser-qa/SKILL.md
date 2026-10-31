@@ -20,7 +20,7 @@ description: VibePicker를 로컬 서버로 띄우고 실제 브라우저에서 
    ```bash
    python3 -m http.server 8000
    ```
-2. 브라우저 자동화는 Claude in Chrome(`mcp__claude-in-chrome__*`)을 쓴다. 쓰기 전에 `claude-in-chrome` 스킬을 먼저 불러온다. 새 탭을 만들어 `http://localhost:8000`을 연다.
+2. 브라우저 자동화는 Claude in Chrome(`mcp__claude-in-chrome__*`)을 쓴다. 쓰기 전에 `claude-in-chrome` 스킬을 먼저 불러온다. 새 탭을 만들어 `http://127.0.0.1:8000`을 연다. (이 환경의 Chrome은 `localhost`로 열면 연결에 실패한 적이 있다)
 3. 스크린샷 저장 위치: 작업용은 스크래치패드, README에 쓸 것만 `docs/qa/<단계>-<화면>-<너비>.png`로 남긴다.
 
 ## 점검 매트릭스
@@ -65,7 +65,7 @@ description: VibePicker를 로컬 서버로 띄우고 실제 브라우저에서 
 ```
 ## 브라우저 점검 — <Todo 번호 또는 단계> (<날짜>)
 
-환경: Chrome, localhost:8000, 커밋 <짧은 해시>
+환경: Chrome, 127.0.0.1:8000, 커밋 <짧은 해시>
 
 | 시나리오 | 1440 L | 1440 D | 768 L | 390 L | 390 D | 비고 |
 | --- | --- | --- | --- | --- | --- | --- |
