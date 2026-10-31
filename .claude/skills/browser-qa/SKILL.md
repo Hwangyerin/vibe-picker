@@ -21,7 +21,7 @@ description: VibePicker를 로컬 서버로 띄우고 실제 브라우저에서 
    python3 -m http.server 8000
    ```
 2. 브라우저 자동화는 Claude in Chrome(`mcp__claude-in-chrome__*`)을 쓴다. 쓰기 전에 `claude-in-chrome` 스킬을 먼저 불러온다. 새 탭을 만들어 `http://localhost:8000`을 연다.
-3. 스크린샷 저장 위치: 작업용은 스크래치패드, 발표·README에 쓸 것만 `docs/qa/<단계>-<화면>-<너비>.png`로 남긴다.
+3. 스크린샷 저장 위치: 작업용은 스크래치패드, README에 쓸 것만 `docs/qa/<단계>-<화면>-<너비>.png`로 남긴다.
 
 ## 점검 매트릭스
 
