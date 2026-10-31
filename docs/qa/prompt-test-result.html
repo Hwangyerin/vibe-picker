@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<!--
+  15-2 프롬프트 검증 결과물
+  입력: docs/qa/prompt-test-prompt.md (VibePicker 내보내기 > AI 프롬프트 > 모바일 웹, 귤밭 하늘 샘플·자연스럽게·기본 브랜드 설정)
+  "만들 화면" 칸에 넣은 문장: 로그인 화면. 이메일과 비밀번호로 로그인, 비밀번호 찾기와 회원가입 링크.
+  만든 AI: Claude (Claude Code, VibePicker를 만든 같은 세션). 프롬프트 밖의 정보 없이 프롬프트만 보고 작성.
+-->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planit 로그인</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?display=swap&family=Gothic+A1:wght@400;500;700" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <style>
+    :root {
+      --bg: #F7F7F8; --surface: #FEFEFE; --text: #0F1319; --muted: #616367; --border: #D7DADD;
+      --primary: #557096; --on-primary: #FFFFFF; --secondary: #E1ECFB; --on-secondary: #2A4366;
+      --point: #6A9BDF; --sub: #B1BDD5;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #16181D; --surface: #202328; --text: #E0E3EC; --muted: #A2A5A9; --border: #333538;
+        --primary: #557096; --on-primary: #FFFFFF; --secondary: #293442; --on-secondary: #BFDAFF;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body { background: var(--bg); color: var(--text); font: 400 16px/1.5 'Pretendard Variable', Pretendard, sans-serif; }
+    .screen { max-width: 390px; min-height: 100dvh; margin: 0 auto; padding: 56px 24px 32px; display: flex; flex-direction: column; }
+    .brand { display: flex; align-items: center; gap: 10px; font: 700 20px 'Gothic A1', sans-serif; }
+    .mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: var(--primary); color: var(--on-primary); }
+    h1 { margin-top: 40px; font: 700 30px/1.25 'Gothic A1', sans-serif; letter-spacing: -0.02em; }
+    .lead { margin-top: 8px; font-size: 15px; color: var(--muted); }
+    form { margin-top: 32px; display: grid; gap: 16px; }
+    label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+    input { height: 50px; padding: 0 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); font: 400 16px 'Pretendard Variable', Pretendard, sans-serif; }
+    input:focus { outline: none; border-color: var(--primary); }
+    .row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+    .row a { color: var(--muted); text-decoration: none; }
+    .check { display: inline-flex; align-items: center; gap: 8px; font-weight: 400; color: var(--text); }
+    .check span { width: 20px; height: 20px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); }
+    .primary { height: 52px; border: 0; border-radius: 12px; background: var(--primary); color: var(--on-primary); font: 600 16px 'Pretendard Variable', Pretendard, sans-serif; }
+    .notice { margin-top: 24px; display: flex; gap: 12px; padding: 16px; border-radius: 12px; background: var(--secondary); color: var(--on-secondary); font-size: 13px; }
+    .notice svg { flex: none; width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+    .foot { margin-top: auto; padding-top: 32px; text-align: center; font-size: 14px; color: var(--muted); }
+    .foot a { color: var(--text); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main class="screen">
+    <div class="brand"><span class="mark">P</span>Planit</div>
+    <h1>다시 만나서 반가워요</h1>
+    <p class="lead">팀 일정과 마감을 이어서 확인하세요.</p>
+
+    <form>
+      <label>이메일<input type="email" placeholder="name@school.ac.kr" /></label>
+      <label>비밀번호<input type="password" placeholder="8자 이상" /></label>
+      <div class="row">
+        <span class="check"><span></span>로그인 유지</span>
+        <a href="#">비밀번호 찾기</a>
+      </div>
+      <button class="primary" type="button">로그인</button>
+    </form>
+
+    <div class="notice">
+      <!-- Lucide bell (선 굵기 1.75) -->
+      <svg viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+      <span>로그인하면 이번 주 마감 3건을 먼저 보여 드려요.</span>
+    </div>
+
+    <p class="foot">처음이신가요? <a href="#">팀 만들기</a></p>
+  </main>
+</body>
+</html>
