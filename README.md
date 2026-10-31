@@ -4,7 +4,7 @@
 
 **바로 써 보기: https://hwangyerin.github.io/vibe-picker/**
 
-![슬라이드 예시 화면](./docs/screenshot-slide.jpg)
+![슬라이드 예시 화면](./docs/before/screenshot-slide.jpg)
 
 ---
 
@@ -51,7 +51,7 @@
 
 | 웹사이트 | 앱 (다크) |
 | --- | --- |
-| ![웹사이트 예시 화면](./docs/screenshot-web.jpg) | ![앱 예시 화면, 다크 모드](./docs/screenshot-app.jpg) |
+| ![웹사이트 예시 화면](./docs/before/screenshot-web.jpg) | ![앱 예시 화면, 다크 모드](./docs/before/screenshot-app.jpg) |
 
 ## 2. PRD와 Todo 리스트
 
