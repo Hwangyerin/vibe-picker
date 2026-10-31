@@ -18,8 +18,9 @@ description: VibePicker를 로컬 서버로 띄우고 실제 브라우저에서 
 
 1. 로컬 서버를 백그라운드로 띄운다. (ES 모듈이라 파일을 직접 열면 동작하지 않는다)
    ```bash
-   python3 -m http.server 8000
+   python3 tools/serve.py        # 캐시를 끈 서버, http://127.0.0.1:8000
    ```
+   기본 `python3 -m http.server`는 쓰지 않는다. 캐시 헤더가 없어 브라우저가 **고치기 전 CSS를 계속 쓴다**. (8단계 점검 때 v1 base.css가 그대로 적용돼 아이콘이 300px 검은 덩어리로 보였다.) 이미 캐시가 남은 포트라면 다른 포트(8001 등)로 띄운다.
 2. 브라우저 자동화는 Claude in Chrome(`mcp__claude-in-chrome__*`)을 쓴다. 쓰기 전에 `claude-in-chrome` 스킬을 먼저 불러온다. 새 탭을 만들어 `http://127.0.0.1:8000`을 연다. (이 환경의 Chrome은 `localhost`로 열면 연결에 실패한 적이 있다)
 3. 스크린샷 저장 위치: 작업용은 스크래치패드, README에 쓸 것만 `docs/qa/<단계>-<화면>-<너비>.png`로 남긴다.
 
@@ -56,6 +57,7 @@ description: VibePicker를 로컬 서버로 띄우고 실제 브라우저에서 
 
 ## 매번 확인할 것
 
+- 화면이 코드와 다르게 보이면 먼저 캐시를 의심한다: `document.styleSheets`의 규칙 수나 계산된 스타일로 최신 파일이 적용됐는지 확인
 - 콘솔 오류: `read_console_messages`로 error/warn이 0개인지 (패턴 예: `error|Error|Uncaught`)
 - 네트워크: 사진이 외부로 전송되지 않는지 (`read_network_requests`에서 업로드 요청 없음)
 - 브라우저 기본 대화상자(alert/confirm)를 띄우는 동작은 자동화가 멈추므로 누르기 전에 사용자에게 알린다

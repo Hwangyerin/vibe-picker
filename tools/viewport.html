@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>너비 점검</title>
+  <!-- browser-qa용: Chrome 창은 약 500px보다 좁게 줄어들지 않아서,
+       정해진 너비의 iframe으로 휴대폰 화면을 흉내 낸다.
+       사용: tools/viewport.html?src=../docs/components.html&w=390&h=844 -->
+  <style>
+    body { margin: 0; padding: 16px; background: #d9d9d9; font: 12px system-ui, sans-serif; }
+    p { margin: 0 0 8px; color: #333; }
+    iframe { display: block; border: 0; background: #fff; box-shadow: 0 0 0 1px #999; }
+  </style>
+</head>
+<body>
+  <p id="info"></p>
+  <iframe id="frame" title="점검 대상"></iframe>
+  <script>
+    const q = new URLSearchParams(location.search);
+    const src = q.get('src') || '../index.html';
+    const w = Number(q.get('w') || 390);
+    const h = Number(q.get('h') || 844);
+    const frame = document.getElementById('frame');
+    frame.width = w;
+    frame.height = h;
+    frame.src = src;
+    document.getElementById('info').textContent = `${src} · ${w}×${h}`;
+  </script>
+</body>
+</html>
