@@ -1,778 +1,672 @@
 /* ==========================================================
-   main.js — 앱 진입점, 각 모듈을 불러와 연결
-   모든 이벤트 흐름의 중심: 사진 → 색 추출 → 칩 표시 → 목업 → 프롬프트
+   main.js — 앱 진입점 (v2)
+   사진 → 후보 색 → 팔레트 5색 → 색 역할 → 화면 갱신 흐름을 잇는다
    ========================================================== */
 
 import { state, setState, subscribe } from './state.js';
-import { initUpload, setOnImageLoaded,
-         restoreImage }                            from './upload.js';
-import { extractColors, pickDistinct }             from './extract.js';
-import { assignRoles, shuffleRoles, readabilityWarning,
-         applyContrastToRoles, applyContrastToPalette, rolesForMode } from './roles.js';
-import { renderChips, initEyedropperOverlay,
-         setOnEyedropperPick, setOnMyPickRemove,
-         deactivateEyedropper } from './chips.js';
-import { renderMockups, applyMode }                from './mockups.js';
-import { initPrompt, showPromptSection, setActiveTab,
-         closePromptModal }                        from './prompt.js';
-import { initSaveButton, initDrawer,
-         setOnCardLoaded, onStateChange,
-         renderHomePalettes, closeDrawer,
-         saveSession, loadSession }                from './storage.js';
+import { initUpload, setOnImage, makePreview, restoreImage } from './upload.js';
+import { extractCandidates } from './extract.js';
+import { composePalette } from './palette.js';
+import {
+  assignRoles, shuffleRoles, readabilityWarning,
+  applyContrastToRoles, applyContrastToPalette, rolesForMode,
+} from './roles.js';
+import {
+  initChips, renderPalette, showPaletteLoading, resetPalette,
+  drawPhoto, cancelEyedropper, setChipFormat,
+} from './chips.js';
+import { renderRoles, renderWarning, renderContrast, renderKept, setPhotoTools } from './rail.js';
+import { showView, showCanvasView, isWorkHash, pushWorkHash, clearWorkHash } from './view.js';
+import { icon } from './ui/icon.js';
+import { initSegmented } from './ui/segmented.js';
+import { confirmDialog } from './ui/dialog.js';
+import { toast } from './ui/toast.js';
+import { applyPaletteTheme, resetPaletteTheme, getUiMode, setUiMode } from './ui/theme.js';
+import { defaultBrand, brandTokens, applyBrandTokens, brandPrimary } from './brand.js';
+import { renderBoard } from './board.js';
+import { renderMockup, stepMockup, refitMockup } from './mockups.js';
+import { openExportDialog } from './export-dialog.js';
+import { saveCard, saveSession, loadSession } from './storage.js';
+import { initDrawer, refreshDrawerCount, renderHomeSaved } from './drawer.js';
+import { initPanel, renderPanel } from './panel.js';
+import { paletteMood, rankFonts, loadFont, loadPreviews } from './fonts.js';
+import { loadIconSet, ICON_SETS, ICON_WEIGHTS } from './icons.js';
 
-/* 작업 화면일 때 주소 뒤에 붙는 표시 — 브라우저 뒤로가기로 홈에 돌아올 수 있게 함 */
-const WORK_HASH = '#work';
-const HOME_URL  = location.pathname + location.search;
+const MAX_KEPT = 5;
+
+/* 다 받아진 서체 (안 받아진 서체는 받는 동안 이전 서체를 그대로 보여 깜빡임을 막는다) */
+const readyFonts = new Set(['pretendard']);
+const loadingFonts = new Set();
+let shownFonts = { display: 'pretendard', body: 'pretendard' };
+
+/* 아이콘: "세트/굵기" → 받아 둔 SVG */
+const iconMaps = new Map();
+const loadingIcons = new Set();
+
+let previewTimer = 0;
+
+let canvasSeg = null;
+let modeSeg = null;
+let styleSeg = null;
 
 /* ==========================================================
    초기화
    ========================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
-  /* 상태 변경 감지 → 저장 버튼 활성화 */
-  subscribe(onStateChange);
+  hydrateIcons(document);
+  initUiModeButton();
 
-  /* 상태 변경 감지 → 작업 중인 화면 임시 보관 (새로고침 대비) */
-  subscribe((s) => saveSession(s));
-
-  /* 사진 올리기 모듈 초기화 */
   initUpload();
-  setOnImageLoaded(handleImageLoaded);
+  setOnImage(handleImage);
 
-  /* 스포이드 오버레이 초기화 */
-  initEyedropperOverlay();
-  setOnEyedropperPick(handleEyedropperPick);
-  setOnMyPickRemove(handleMyPickRemove);
+  initChips({ onPick: handleEyedropperPick, onUnpick: handleUnpick });
 
-  /* 홈 버튼 (앱 타이틀 클릭 → 초기 화면으로 리셋) */
-  const appTitle = document.getElementById('app-title');
-  appTitle.addEventListener('click', handleHomeClick);
-  /* 키보드로도 누를 수 있게 (Enter / Space) */
-  appTitle.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    e.preventDefault();
-    handleHomeClick();
+  setState({ brand: defaultBrand() });
+  initPanel(handleBrandChange);
+  initDrawer(handleCardLoad);
+
+  /* 저장 */
+  document.getElementById('btn-save').addEventListener('click', handleSave);
+
+  /* 상태가 바뀔 때마다 저장 버튼 상태와 새로고침 복원용 임시 보관 */
+  subscribe(() => {
+    syncSaveButton();
+    saveSession(sessionSnapshot());
+  });
+  window.addEventListener('pagehide', () => saveSession(sessionSnapshot(), true));
+
+  document.getElementById('btn-repick').addEventListener('click', handleRepick);
+  document.getElementById('btn-keep').addEventListener('click', handleKeep);
+  document.getElementById('btn-shuffle').addEventListener('click', handleShuffle);
+  document.getElementById('btn-contrast-reset').addEventListener('click', () => setContrast(0));
+
+  /* 대비 슬라이더: 끄는 동안 여러 번 불리므로 한 프레임에 한 번만 다시 그린다 */
+  let frame = 0;
+  document.getElementById('contrast-slider').addEventListener('input', (e) => {
+    const offset = Number(e.target.value);
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => setContrast(offset));
   });
 
-  /* Esc: 프롬프트 모달 → 서랍 → 스포이드 순으로 열려 있는 것 하나를 닫음 */
-  document.addEventListener('keydown', handleEscape);
+  /* 시안 불러오기·지우기 */
+  document.getElementById('kept-list').addEventListener('click', (e) => {
+    const remove = e.target.closest('[data-kept-remove]');
+    if (remove) return handleKeptRemove(Number(remove.dataset.keptRemove));
+    const load = e.target.closest('[data-kept]');
+    if (load) handleKeptRestore(Number(load.dataset.kept));
+  });
 
-  /* 브라우저 뒤로가기·앞으로가기 */
+  initSegmented(document.getElementById('format-seg'), { onChange: setChipFormat });
+  styleSeg = initSegmented(document.getElementById('style-seg'), { onChange: handleStyle });
+
+  canvasSeg = initSegmented(document.getElementById('canvas-seg'), {
+    onChange: (v) => {
+      setState({ canvasView: v });
+      showCanvasView(v);
+      if (v !== 'board') refitMockup(v);
+    },
+  });
+
+  modeSeg = initSegmented(document.getElementById('preview-mode-seg'), {
+    onChange: (v) => {
+      /* 라이트·다크는 두 화면이 겹쳐 사라지듯(크로스페이드) 바뀐다 (지원하는 브라우저만) */
+      const apply = () => {
+        setState({ mode: v, isDirty: true });
+        updateUI();
+      };
+      if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.startViewTransition(apply);
+      } else {
+        apply();
+      }
+    },
+  });
+
+  /* 내보내기: 지금 보고 있는 화면(모바일 웹·슬라이드)에 맞춘 프롬프트부터 */
+  document.getElementById('btn-export').addEventListener('click', () => {
+    openExportDialog(exportInput, state.canvasView === 'slides' ? 'slides' : 'mobile');
+  });
+
+  /* 로고 → 첫 화면 */
+  document.getElementById('logo').addEventListener('click', (e) => {
+    e.preventDefault();
+    goHome();
+  });
+
   window.addEventListener('popstate', handlePopState);
-
-  /* 다시 뽑기 버튼 */
-  document.getElementById('btn-repick')
-    .addEventListener('click', handleRepick);
-
-  /* 보관 버튼: 현재 팔레트를 히스토리에 담음 */
-  document.getElementById('btn-keep')
-    .addEventListener('click', handleKeep);
-
-  /* 랜덤 섞기 버튼 */
-  document.getElementById('btn-shuffle')
-    .addEventListener('click', handleShuffle);
-
-  /* 대비 슬라이더 */
-  document.getElementById('contrast-slider')
-    .addEventListener('input', handleContrastSlider);
-
-  /* 대비 초기화 버튼 */
-  document.getElementById('btn-contrast-reset')
-    .addEventListener('click', handleContrastReset);
-
-  /* 라이트·다크 전환 버튼 */
-  document.getElementById('btn-light')
-    .addEventListener('click', () => handleModeChange('light'));
-  document.getElementById('btn-dark')
-    .addEventListener('click', () => handleModeChange('dark'));
-
-  /* AI 프롬프트 복사 버튼 */
-  initPrompt();
-
-  /* 저장 버튼·서랍 */
-  initSaveButton();
-  initDrawer();
-  setOnCardLoaded(handleCardLoaded);
-
-  /* 목업 탭 네비게이션 초기화 */
-  initMockupTabs();
-
-  /* 슬라이드·웹·앱 탭 좌우 내비게이션 초기화 */
-  initSlideViewer();
-  initPageViewer('web');
-  initPageViewer('app');
-
-  /* 홈 화면 저장된 팔레트 목록 초기 렌더 */
-  renderHomePalettes();
-
-  /* 새로고침 전에 하던 작업이 있으면 되살림 */
-  restoreSession();
-
-  /* 저장 안 된 작업이 있을 때 탭 닫기·새로고침 시 경고 */
-  window.addEventListener('beforeunload', (e) => {
-    if (state.isDirty) {
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') cancelEyedropper();
+    /* ←→: 모바일 웹·슬라이드 넘기기 (입력창·슬라이더·세그먼트 위에서는 그쪽이 쓴다) */
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && state.view === 'work'
+        && state.canvasView !== 'board' && !document.querySelector('dialog[open]')
+        && !e.target.closest('input, textarea, [role="radiogroup"], [role="listbox"], .select')) {
       e.preventDefault();
-      e.returnValue = '';
+      stepMockup(state.canvasView, e.key === 'ArrowLeft' ? -1 : 1);
     }
   });
 
-  /* 페이지를 떠나기 직전 상태를 바로 기록 (0.3초 대기 중인 변경까지 포함) */
-  window.addEventListener('pagehide', () => saveSession(state, true));
-
-  console.log('VibePicker 초기화 완료');
+  /* 새로고침 전에 하던 작업이 있으면 되살린다 */
+  restoreSession();
 });
 
 /* ==========================================================
-   사진 로드 후 색 추출 파이프라인
+   사진 → 팔레트
    ========================================================== */
 
-/**
- * 사진이 올라왔을 때 실행
- * 후보 색 추출 → 대표색 5개 선택 → 역할 배정 → UI 업데이트
- */
-function handleImageLoaded(img) {
-  /* 워크스페이스로 전환 + 읽기 전용 해제 */
-  showWorkspace();
-  setReadonlyView(false);
+function handleImage(img) {
+  cancelEyedropper();
+  resetPalette();
+  drawPhoto(img);
+  showPaletteLoading();
+  showView('work');
 
-  /* 사진 캔버스 영역 표시 */
-  document.getElementById('image-display').hidden = false;
-
-  /* 1. 후보 색 10~12개 추출 */
-  const candidates = extractColors(img);
-  setState({ candidateColors: candidates, myPicks: new Set(), paletteHistory: [] });
-
-  /* 히스토리 DOM 비우기 (다른 사진으로 넘어갈 때 이전 히스토리 사라짐) */
-  renderPaletteHistory();
-
-  /* 2. 후보 중 서로 멀리 떨어진 5개 선택 */
-  const palette = pickDistinct(candidates, new Set(), 5);
-  setState({ palette, isDirty: true });
-
-  /* 3. 색 역할 자동 배정 */
-  const roles = assignRoles(palette);
-  setState({ roles });
-
-  /* 4. UI 업데이트 */
-  updateUI();
+  /* 칩 자리의 불러오는 표시가 먼저 그려지도록 한 프레임 쉰 뒤 색을 뽑는다 */
+  requestAnimationFrame(() => setTimeout(() => {
+    const candidates = extractCandidates(img, 0);
+    const { colors: palette, signature } = composePalette(candidates, { style: state.paletteStyle });
+    setState({
+      view: 'work',
+      image: img,
+      previewImage: makePreview(img),
+      candidates,
+      attempt: 0,
+      recentSignatures: [signature],
+      palette,
+      myPicks: new Set(),
+      roles: assignRoles(palette),
+      contrastOffset: 0,
+      paletteHistory: [],
+      loadedCardKey: null,
+      /* 새 사진이면 팔레트 칸이 바뀌므로 강조색 선택만 처음으로 (워드마크·서체 등은 그대로) */
+      brand: { ...state.brand, accentIndex: null, accentLight: 0, accentChroma: 0 },
+      isDirty: true,
+    });
+    updateUI();
+  }, 0));
 }
 
 /* ==========================================================
-   UI 업데이트 (색이 바뀔 때마다 호출)
+   화면 갱신 — 색이 바뀔 때마다
    ========================================================== */
 
-/**
- * 현재 state를 바탕으로 칩·목업·경고·버튼 상태를 갱신
- * - 대비 슬라이더 오프셋이 있으면 칩 표시에도 반영
- */
 function updateUI() {
-  const { roles, mode, contrastOffset } = state;
+  const { palette, roles, myPicks, contrastOffset, mode, image } = state;
+  if (!roles) return;
 
-  const displayRoles = contrastOffset !== 0
-    ? applyContrastToRoles(roles, contrastOffset)
-    : roles;
+  const displayRoles = applyContrastToRoles(roles, contrastOffset);
+  const displayPalette = applyContrastToPalette(palette, roles, contrastOffset);
+  const modeRoles = rolesForMode(displayRoles, mode);
 
-  /* 칩 렌더링 (대비 슬라이더가 적용된 색) */
-  renderCurrentChips();
+  renderPalette(displayPalette, myPicks, { readonly: !image });
+  renderRoles(modeRoles, mode);
+  renderWarning(readabilityWarning(modeRoles.text, modeRoles.bg));
+  renderContrast(contrastOffset);
+  renderKept(state.paletteHistory, currentKeptIndex());
+  setPhotoTools(Boolean(image));
+  styleSeg.setDisabled(!image);
+  document.getElementById('btn-export').disabled = false;
 
-  /* 칩 섹션 표시 (tools-section은 setReadonlyView가 제어) */
-  document.getElementById('chips-section').hidden = false;
+  /* VibePicker 자체가 지금 브랜드 강조색과 팔레트로 물든다 */
+  applyPaletteTheme(rolesForMode(displayRoles, 'light'), brandPrimary(state.brand, displayRoles, displayPalette));
+  paintLogo(displayPalette);
 
-  /* 뷰어 하단 컨트롤 표시 */
-  document.getElementById('mockup-viewer-footer').hidden = false;
-
-  /* 역할 배지 업데이트 */
-  renderRolesBadges(displayRoles);
-
-  /* 목업 렌더링 */
-  renderMockups(displayRoles, mode);
-
-  /* 프롬프트 섹션 표시 */
-  showPromptSection();
-
-  /* 가독성 경고 */
-  updateWarning(displayRoles);
-}
-
-/**
- * 현재 팔레트를 칩으로 그림
- * - state.palette는 원본을 유지하고, 화면에는 대비 슬라이더가 적용된 색을 보여줌
- *   → 칩에서 복사한 HEX와 배지·프롬프트의 HEX가 항상 같음
- * - 조정된 상태면 칩 아래에 안내 문구 표시
- */
-function renderCurrentChips() {
-  const { palette, myPicks, roles, contrastOffset } = state;
-  renderChips(applyContrastToPalette(palette, roles, contrastOffset), myPicks);
-  document.getElementById('chips-note').hidden = contrastOffset === 0;
-}
-
-/**
- * 역할별 색 배지를 #roles-display 안에 표시
- * - 지금 보고 있는 모드(라이트·다크)에서 실제로 쓰이는 색을 보여줌
- */
-function renderRolesBadges(displayRoles) {
-  const roles = rolesForMode(displayRoles, state.mode);
-  const container = document.getElementById('roles-display');
-  const labels = [
-    ['배경', roles.bg],
-    ['글자', roles.text],
-    ['메인', roles.main],
-    ['포인트', roles.point],
-    ['보조', roles.sub],
-  ];
-  container.innerHTML = labels.map(([label, hex]) => `
-    <div class="role-badge">
-      <span class="role-dot" style="background-color:${hex}"></span>
-      <span class="role-name">${label}</span>
-      <span class="role-hex">${hex}</span>
-    </div>
-  `).join('');
-}
-
-/**
- * 가독성 경고 업데이트 — 지금 보고 있는 모드(라이트·다크)의 글자·배경 기준
- */
-function updateWarning(roles) {
-  const isDark = state.mode === 'dark';
-  const { warn, message } = readabilityWarning(
-    isDark ? roles.textDark : roles.text,
-    isDark ? roles.bgDark   : roles.bg,
-  );
-  const warningEl = document.getElementById('readability-warning');
-  const warningText = document.getElementById('warning-text');
-
-  if (warn) {
-    warningEl.hidden = false;
-    warningText.textContent = message;
-  } else {
-    warningEl.hidden = true;
-  }
+  renderBrand(displayRoles, displayPalette);
 }
 
 /* ==========================================================
-   버튼 핸들러
+   브랜드 — 보드와 설정 패널
    ========================================================== */
 
-/** 다시 뽑기: 사진에서 새로 추출한 후보 중 다른 5색 선택 (횟수 제한 없음) */
+function renderBrand(displayRoles, displayPalette) {
+  const { brand, mode } = state;
+
+  /* 사진 분위기 → 서체 추천 */
+  const mood = paletteMood(displayPalette);
+  const displayRank = rankFonts(mood);
+  const bodyRank = rankFonts(mood, { body: true });
+  const autoFont = displayRank[0].font.id;
+
+  /* 고른 서체가 아직 안 받아졌으면 받는 동안 이전 서체로 */
+  const wantDisplay = brand.fontDisplay ?? autoFont;
+  const wantBody = brand.fontBody;
+  if (readyFonts.has(wantDisplay)) shownFonts.display = wantDisplay; else requestFont(wantDisplay);
+  if (readyFonts.has(wantBody)) shownFonts.body = wantBody; else requestFont(wantBody);
+
+  const tokens = brandTokens(
+    { ...brand, fontDisplay: shownFonts.display, fontBody: shownFonts.body },
+    displayRoles, displayPalette, mode, autoFont,
+  );
+  applyBrandTokens(document.getElementById('canvas-stage'), tokens);
+
+  const icons = currentIcons(brand);
+  renderBoard(document.getElementById('board-root'), { tokens, brand, palette: displayPalette, icons });
+  renderMockup('mobile', document.getElementById('mobile-root'), { brand, icons });
+  renderMockup('slides', document.getElementById('slides-root'), { brand, icons });
+
+  const autoAccent = Math.max(0, displayPalette.indexOf(displayRoles.main));
+  renderPanel(brand, { palette: displayPalette, autoAccent, primary: tokens.primary, displayRank, bodyRank, autoFont });
+
+  /* 서체 목록 미리보기용 글자 (워드마크를 칠 때마다가 아니라 잠깐 멈췄을 때) */
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => loadPreviews(brand.wordmark || 'Planit'), 400);
+}
+
+function requestFont(id) {
+  if (loadingFonts.has(id)) return;
+  loadingFonts.add(id);
+  loadFont(id).then(() => {
+    readyFonts.add(id);
+    loadingFonts.delete(id);
+    if (state.roles) updateUI();
+  });
+}
+
+/** 내보내기에 쓸 값: 라이트·다크 토큰을 화면과 같은 방식으로 계산 */
+function exportInput() {
+  const { brand, roles, palette, contrastOffset } = state;
+  const displayRoles = applyContrastToRoles(roles, contrastOffset);
+  const displayPalette = applyContrastToPalette(palette, roles, contrastOffset);
+  const autoFont = rankFonts(paletteMood(displayPalette))[0].font.id;
+  /* 내보내기는 받는 중인 서체가 아니라 사용자가 고른 서체 그대로 */
+  const chosen = { ...brand, fontDisplay: brand.fontDisplay ?? autoFont };
+  return {
+    brand,
+    light: brandTokens(chosen, displayRoles, displayPalette, 'light', autoFont),
+    dark: brandTokens(chosen, displayRoles, displayPalette, 'dark', autoFont),
+  };
+}
+
+/** 지금 설정의 아이콘 (아직 안 받아졌으면 받기 시작하고 null) */
+function currentIcons(brand) {
+  const key = `${brand.iconSet}/${ICON_SETS[brand.iconSet].stroke ? 'regular' : ICON_WEIGHTS[brand.iconWeight].phosphor}`;
+  if (iconMaps.has(key)) return iconMaps.get(key);
+  if (!loadingIcons.has(key)) {
+    loadingIcons.add(key);
+    loadIconSet(brand.iconSet, brand.iconWeight).then((map) => {
+      iconMaps.set(key, map);
+      loadingIcons.delete(key);
+      if (state.roles) updateUI();
+    });
+  }
+  return null;
+}
+
+/** 설정 패널에서 무언가 바뀌었을 때 */
+function handleBrandChange(patch) {
+  setState({ brand: { ...state.brand, ...patch }, isDirty: true });
+  if (state.roles) updateUI();
+}
+
+/** 로고의 다섯 줄을 지금 팔레트 색으로 */
+function paintLogo(colors) {
+  const mark = document.querySelector('.logo__mark');
+  colors.forEach((c, i) => mark.style.setProperty(`--p${i}`, c));
+}
+
+function clearLogo() {
+  const mark = document.querySelector('.logo__mark');
+  [0, 1, 2, 3, 4].forEach((i) => mark.style.removeProperty(`--p${i}`));
+}
+
+/* ==========================================================
+   레일 버튼
+   ========================================================== */
+
+/** my pick 칩 위치 → 그 색 */
+function fixedColors() {
+  return new Map([...state.myPicks].map((i) => [i, state.palette[i]]));
+}
+
+/**
+ * 다시 뽑기: 다른 시작점으로 후보를 새로 뽑고, 조화 점수 상위 조합 중 최근에 보지 않은 것
+ * my pick은 같은 칸에 그대로 남는다
+ */
 function handleRepick() {
-  const { image, myPicks, palette } = state;
+  const { image, paletteStyle, recentSignatures } = state;
   if (!image) return;
 
-  /* 사진에서 후보색을 새로 추출 → 누를 때마다 k-means 초기값이 달라져 다른 결과 */
-  const freshCandidates = extractColors(image);
-  setState({ candidateColors: freshCandidates });
-
-  /* my pick으로 고정된 색의 HEX 집합 */
-  const myPickColors = new Set(
-    [...myPicks].map((i) => palette[i])
-  );
-
-  /* 풀 셔플 + 고정색 보존으로 매번 다른 5색 선택 */
-  const newPalette = pickDistinct(freshCandidates, myPickColors, 5);
-
-  /* my pick 인덱스를 새 팔레트 위치에 맞게 재매핑 */
-  const newMyPicks = new Set();
-  [...myPickColors].forEach((hex) => {
-    const idx = newPalette.indexOf(hex);
-    if (idx !== -1) newMyPicks.add(idx);
+  const attempt = state.attempt + 1;
+  const candidates = extractCandidates(image, attempt);
+  const { colors, signature } = composePalette(candidates, {
+    style: paletteStyle,
+    attempt,
+    fixed: fixedColors(),
+    avoid: recentSignatures,
   });
 
-  const roles = assignRoles(newPalette);
-  setState({ palette: newPalette, myPicks: newMyPicks, roles, isDirty: true });
+  setState({
+    candidates,
+    attempt,
+    recentSignatures: [...recentSignatures, signature].slice(-6),
+    palette: colors,
+    roles: assignRoles(colors),
+    isDirty: true,
+  });
   updateUI();
 }
 
-/**
- * 보관 버튼: 현재 팔레트를 히스토리에 추가
- * - 다시 뽑기해도 히스토리는 유지됨 (시안 비교용)
- * - 이미 보관된 동일 팔레트는 중복 추가하지 않음
- */
-const MAX_HISTORY = 5;
+/** 팔레트 스타일 바꾸기: 같은 후보에서 그 스타일로 다시 고르고 다듬는다 */
+function handleStyle(style) {
+  setState({ paletteStyle: style });
+  if (!state.image || !state.candidates.length) return;
+  const { colors, signature } = composePalette(state.candidates, {
+    style,
+    attempt: state.attempt,
+    fixed: fixedColors(),
+  });
+  setState({
+    palette: colors,
+    roles: assignRoles(colors),
+    recentSignatures: [...state.recentSignatures, signature].slice(-6),
+    isDirty: true,
+  });
+  updateUI();
+}
+
+/** 역할 섞기: 같은 5색 안에서 역할만 다시 */
+function handleShuffle() {
+  setState({ roles: shuffleRoles(state.palette), isDirty: true });
+  updateUI();
+}
+
+function setContrast(offset) {
+  if (offset === state.contrastOffset) return renderContrast(offset);
+  setState({ contrastOffset: offset, isDirty: true });
+  updateUI();
+}
+
+/* ---------- 스포이드 ---------- */
+
+function handleEyedropperPick(hex, index) {
+  const palette = [...state.palette];
+  palette[index] = hex;
+  const myPicks = new Set(state.myPicks).add(index);
+  setState({ palette, myPicks, roles: assignRoles(palette), isDirty: true });
+  updateUI();
+  toast(`${index + 1}번째 색을 ${hex}로 바꿨어요`, { icon: 'pipette' });
+}
+
+function handleUnpick(index) {
+  const myPicks = new Set(state.myPicks);
+  myPicks.delete(index);
+  setState({ myPicks, isDirty: true });
+  updateUI();
+}
+
+/* ---------- 시안 ---------- */
+
+function snapshot() {
+  const { palette, myPicks, roles, contrastOffset, paletteStyle } = state;
+  return { palette: [...palette], myPicks: [...myPicks], roles, contrastOffset, paletteStyle };
+}
+
+function currentKeptIndex() {
+  const now = JSON.stringify(snapshot());
+  return state.paletteHistory.findIndex((e) => JSON.stringify(e) === now);
+}
 
 function handleKeep() {
-  const { palette, myPicks, roles, contrastOffset, paletteHistory } = state;
-  if (!palette.length) return;
-
-  const warningEl = document.getElementById('keep-warning');
-  const btn       = document.getElementById('btn-keep');
-
-  /* 지금 화면 그대로 되돌릴 수 있게 원본 색 + 역할 + 대비 값을 함께 보관 */
-  const entry = { palette: [...palette], myPicks: [...myPicks], roles, contrastOffset };
-
-  /* 이미 똑같은 시안이 보관되어 있으면 무시 */
-  const isDuplicate = paletteHistory.some(
-    (kept) => JSON.stringify(kept) === JSON.stringify(entry)
-  );
-  if (isDuplicate) return;
-
-  /* 최대 5개 초과 시 경고 + 버튼 흔들기 */
-  if (paletteHistory.length >= MAX_HISTORY) {
-    warningEl.hidden = false;
-    btn.classList.remove('shaking');
-    void btn.offsetWidth; /* reflow: 애니메이션 재시작을 위해 필요 */
-    btn.classList.add('shaking');
-    btn.addEventListener('animationend', () => btn.classList.remove('shaking'), { once: true });
-    return;
+  if (!state.palette.length) return;
+  if (currentKeptIndex() !== -1) return toast('이미 보관한 시안이에요');
+  if (state.paletteHistory.length >= MAX_KEPT) {
+    return toast(`시안은 ${MAX_KEPT}개까지 보관할 수 있어요. 하나를 지운 뒤 보관해 주세요`, { icon: 'info' });
   }
-
-  /* 저장 성공 시 경고 숨김 */
-  warningEl.hidden = true;
-
-  setState({ paletteHistory: [...paletteHistory, entry] });
-  renderPaletteHistory();
+  setState({ paletteHistory: [...state.paletteHistory, snapshot()] });
+  updateUI();
+  toast('시안으로 보관했어요', { icon: 'bookmark' });
 }
 
-/**
- * 히스토리 카드 렌더링
- * — 보관된 팔레트들을 5색 직사각형 카드로 표시
- */
-function renderPaletteHistory() {
-  const container = document.getElementById('palette-history');
-  if (!container) return;
-  container.innerHTML = '';
-
-  state.paletteHistory.forEach((entry, idx) => {
-    const card = document.createElement('div');
-    card.className = 'history-card';
-    card.title = '클릭하면 이 팔레트로 복원';
-
-    /* 내부 래퍼: border-radius + overflow:hidden 을 여기서만 처리해
-       X 버튼이 카드 바깥으로 걸칠 수 있게 함 */
-    const inner = document.createElement('div');
-    inner.className = 'history-card-inner';
-
-    /* 5색 블록 (패딩 없이 가로로 꽉 채움) */
-    const colors = document.createElement('div');
-    colors.className = 'history-card-colors';
-    /* 보관할 때 칩에 보이던 색(대비 적용)으로 표시 */
-    applyContrastToPalette(entry.palette, entry.roles, entry.contrastOffset).forEach((hex) => {
-      const block = document.createElement('div');
-      block.className = 'history-color-block';
-      block.style.backgroundColor = hex;
-      colors.appendChild(block);
-    });
-    inner.appendChild(colors);
-    card.appendChild(inner);
-
-    /* X 버튼: 호버 시 우측 상단 표시, 클릭 시 삭제 */
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'history-card-remove';
-    removeBtn.textContent = '✕';
-    removeBtn.title = '보관 목록에서 삭제';
-    removeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      handleHistoryRemove(idx);
-    });
-    card.appendChild(removeBtn);
-
-    /* 카드 클릭 → 해당 팔레트를 현재 작업 화면으로 복원 */
-    card.addEventListener('click', () => handleHistoryRestore(idx));
-
-    container.appendChild(card);
-  });
-}
-
-/** 히스토리 카드 클릭 → 해당 팔레트를 현재 팔레트로 복원 (히스토리는 유지) */
-function handleHistoryRestore(idx) {
-  const entry = state.paletteHistory[idx];
-  if (!entry) return;
-
-  /* 보관할 때의 역할 배치와 대비 값까지 그대로 복원 */
-  const contrastOffset = entry.contrastOffset ?? 0;
+function handleKeptRestore(i) {
+  const e = state.paletteHistory[i];
+  if (!e) return;
   setState({
-    palette:  entry.palette,
-    myPicks:  new Set(entry.myPicks),
-    roles:    entry.roles ?? assignRoles(entry.palette),
-    contrastOffset,
-    isDirty:  true,
+    palette: [...e.palette],
+    myPicks: new Set(e.myPicks),
+    roles: e.roles,
+    contrastOffset: e.contrastOffset,
+    paletteStyle: e.paletteStyle ?? 'natural',
+    isDirty: true,
   });
-  document.getElementById('contrast-slider').value = contrastOffset;
+  styleSeg.set(state.paletteStyle);
   updateUI();
 }
 
-/** 히스토리 카드 X → 해당 항목 삭제 */
-function handleHistoryRemove(idx) {
-  const newHistory = state.paletteHistory.filter((_, i) => i !== idx);
-  setState({ paletteHistory: newHistory });
-  renderPaletteHistory();
-}
-
-/** 랜덤 섞기: 같은 5색 안에서 역할만 무작위 재배정
- * (색 자체를 바꾸는 건 "다시 뽑기"의 몫 — my pick 유무와 상관없이 동작이 같음)
- */
-function handleShuffle() {
-  const roles = shuffleRoles(state.palette);
-  setState({ roles, isDirty: true });
+function handleKeptRemove(i) {
+  setState({ paletteHistory: state.paletteHistory.filter((_, j) => j !== i) });
   updateUI();
 }
 
-/** 대비 초기화: 슬라이더를 0으로 되돌리고 원본 팔레트 색으로 복원 */
-function handleContrastReset() {
-  document.getElementById('contrast-slider').value = 0;
-  setState({ contrastOffset: 0, isDirty: true });
+/* ==========================================================
+   저장 · 서랍 · 새로고침 복원
+   ========================================================== */
 
-  /* 역할은 유지, 대비 조정 없이 그대로 표시 */
-  const { roles } = state;
-  renderCurrentChips();
-  renderMockups(roles, state.mode);
-  renderRolesBadges(roles);
-  updateWarning(roles);
+/** 서랍에 넣을 카드 (사진은 넣지 않는다) */
+function cardSnapshot() {
+  const { palette, myPicks, roles, contrastOffset, mode, paletteStyle, brand } = state;
+  return { palette, myPicks: [...myPicks], roles, contrastOffset, mode, paletteStyle, brand };
 }
 
-/**
- * 대비 슬라이더
- * - 역할(roles)은 원본 그대로 유지 — state.roles 재배정 없음
- * - 밝은 색 ↔ 어두운 색을 양방향으로 조절 (adjustContrast)
- */
-function handleContrastSlider(e) {
-  const offset = parseInt(e.target.value, 10);
-  setState({ contrastOffset: offset, isDirty: true });
+let savedTimer = 0;
 
-  const displayRoles = applyContrastToRoles(state.roles, offset);
+function handleSave() {
+  if (!state.roles) return;
+  const result = saveCard(cardSnapshot(), state.loadedCardKey);
+  if (!result.ok) {
+    toast(result.reason === 'full'
+      ? '서랍이 가득 찼어요 (20개). 서랍에서 오래된 브랜드를 지운 뒤 저장해 주세요'
+      : '브라우저 저장 공간이 부족해 저장하지 못했어요. 심볼 이미지를 빼고 다시 해 보세요', { icon: 'alert', duration: 3200 });
+    return;
+  }
+  const overwrite = Boolean(state.loadedCardKey);
+  setState({ loadedCardKey: result.key, isDirty: false });
+  refreshDrawerCount();
+  renderHomeSaved();
 
-  renderCurrentChips();
-  renderMockups(displayRoles, state.mode);
-  renderRolesBadges(displayRoles);
-  updateWarning(displayRoles);
+  /* 버튼이 잠깐 "저장됨"으로 */
+  const btn = document.getElementById('btn-save');
+  btn.dataset.state = 'done';
+  btn.querySelector('use').setAttribute('href', btn.querySelector('use').getAttribute('href').replace('#bookmark', '#check'));
+  btn.lastChild.textContent = '저장됨';
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(() => {
+    delete btn.dataset.state;
+    btn.querySelector('use').setAttribute('href', btn.querySelector('use').getAttribute('href').replace('#check', '#bookmark'));
+    btn.lastChild.textContent = '저장';
+  }, 1600);
+  toast(overwrite ? '서랍의 브랜드를 고친 내용으로 바꿨어요' : '서랍에 저장했어요', { tone: 'success' });
 }
 
-/** 라이트·다크 전환 */
-function handleModeChange(mode) {
-  setState({ mode, isDirty: true });
-  syncModeButtons(mode);
-  applyMode(mode);
-
-  const displayRoles = applyContrastToRoles(state.roles, state.contrastOffset);
-  renderRolesBadges(displayRoles);
-  updateWarning(displayRoles);
+/** 저장할 변경이 있을 때만 저장 버튼을 켠다 */
+function syncSaveButton() {
+  const btn = document.getElementById('btn-save');
+  if (btn.dataset.state === 'done') return;
+  btn.disabled = !(state.roles && state.isDirty);
 }
 
-/**
- * 서랍에서 카드 불러오기
- * 이미지는 저장하지 않으므로 팔레트·역할 정보만 복원 (읽기 전용)
- */
-function handleCardLoaded(card, key) {
-  if (!card.palette?.length) return;
-
-  const offset = card.contrastOffset ?? 0;
-
-  /* 저장된 roles를 그대로 사용 (없으면 원본 팔레트로 재계산) */
-  const roles = card.roles ?? assignRoles(card.palette);
-
-  setState({
-    image:          null,
-    previewImage:   null,
-    palette:        card.palette,
-    myPicks:        new Set(card.myPicks ?? []),
-    roles,
-    contrastOffset: offset,
-    mode:           card.mode ?? 'light',
-    loadedCardKey:  key,
-    isDirty:        false,
-    paletteHistory: [],
-  });
-
-  /* 히스토리 DOM 비우기 */
-  renderPaletteHistory();
-
-  /* 대비 슬라이더 위치 복원 */
-  document.getElementById('contrast-slider').value = offset;
-
-  /* 라이트·다크 버튼 상태 복원 */
-  syncModeButtons(card.mode ?? 'light');
-
-  /* 워크스페이스 전환 + 읽기 전용 (이미지 없음, 편집 버튼 숨김) */
-  showWorkspace();
-  document.getElementById('image-display').hidden = true;
-  setReadonlyView(true);
-
-  updateUI();
-}
-
-/**
- * 읽기 전용 뷰 진입 / 해제
- * - true : 서랍에서 불러온 상태 — 업로드·편집 버튼 모두 숨김
- * - false: 사진 업로드 후 정상 편집 상태
- */
-function setReadonlyView(readonly) {
-  document.getElementById('repick-row').hidden      = readonly;
-  document.getElementById('palette-history').hidden = readonly;
-}
-
-/** 라이트·다크 버튼의 눌린 표시를 현재 모드에 맞춤 */
-function syncModeButtons(mode) {
-  document.getElementById('btn-light').classList.toggle('active', mode === 'light');
-  document.getElementById('btn-dark').classList.toggle('active', mode === 'dark');
-}
-
-/** 워크스페이스 화면으로 전환 (홈 화면 숨김) */
-function showWorkspace() {
-  document.getElementById('home-screen').hidden = true;
-  document.getElementById('workspace').hidden   = false;
-
-  /* 방문 기록에 작업 화면을 한 칸 추가 → 뒤로가기를 누르면 홈으로 */
-  if (location.hash !== WORK_HASH) history.pushState(null, '', WORK_HASH);
-}
-
-/** 홈 화면으로 전환 (워크스페이스 숨김) */
-function showHomeScreen() {
-  document.getElementById('workspace').hidden   = true;
-  document.getElementById('home-screen').hidden = false;
-}
-
-/** 목업 탭 네비게이션 초기화 */
-function initMockupTabs() {
-  document.querySelectorAll('.mockup-tab-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const tab = btn.dataset.tab;
-
-      /* 탭 버튼 활성 상태 */
-      document.querySelectorAll('.mockup-tab-btn')
-        .forEach((b) => b.classList.toggle('active', b === btn));
-
-      /* 탭 패널 표시/숨김 */
-      document.querySelectorAll('.mockup-tab-pane').forEach((pane) => {
-        pane.hidden = pane.id !== `mockup-pane-${tab}`;
-      });
-
-      /* 프롬프트 탭 컨텍스트 업데이트 */
-      setActiveTab(tab);
+/** 서랍(또는 첫 화면)에서 카드 불러오기 */
+async function handleCardLoad(key, card) {
+  if (state.view === 'work' && state.isDirty && key !== state.loadedCardKey) {
+    const ok = await confirmDialog({
+      title: '저장하지 않은 작업이 있어요',
+      body: '불러오면 지금 화면의 팔레트와 브랜드 설정이 사라져요.',
+      confirmText: '불러오기',
+      cancelText: '계속 작업하기',
     });
-  });
-}
-
-/**
- * 화살표 + 점으로 한 장씩 넘기는 뷰어 (슬라이드 탭·웹 탭 공용)
- * @param {{ prevId: string, nextId: string, dotsId: string, count: number,
- *           show: (index: number) => void }} options
- *   - show: index번째 화면만 보이게 만드는 함수
- */
-function initCarousel({ prevId, nextId, dotsId, count, show }) {
-  let current = 0;
-
-  const prevBtn = document.getElementById(prevId);
-  const nextBtn = document.getElementById(nextId);
-  const dots    = document.getElementById(dotsId).querySelectorAll('.slide-dot');
-
-  function update() {
-    show(current);
-
-    /* 도트 활성화 */
-    dots.forEach((dot, i) => dot.classList.toggle('active', i === current));
-
-    /* 첫 장이면 이전 화살표 숨김, 마지막 장이면 다음 화살표 숨김 */
-    prevBtn.hidden = current === 0;
-    nextBtn.hidden = current === count - 1;
+    if (!ok) return;
   }
-
-  prevBtn.addEventListener('click', () => { if (current > 0) { current--; update(); } });
-  nextBtn.addEventListener('click', () => { if (current < count - 1) { current++; update(); } });
-
-  update();
-}
-
-/** 슬라이드 탭: 표지 · 본문 · 차트 중 한 장만 표시 */
-function initSlideViewer() {
-  const SLIDE_IDS = ['mockup-slide-cover', 'mockup-slide-body', 'mockup-slide-chart'];
-
-  initCarousel({
-    prevId: 'slide-prev',
-    nextId: 'slide-next',
-    dotsId: 'slide-dots',
-    count:  SLIDE_IDS.length,
-    show:   (index) => SLIDE_IDS.forEach((id, i) => {
-      document.getElementById(id).hidden = i !== index;
-    }),
-  });
-}
-
-/**
- * 웹 탭(홈 · 제품 · 요금)·앱 탭(홈 · 분석 · 카드): 한 목업 안에서 화면 전환
- * 실제 표시는 mockups.css가 카드의 data-page 값으로 처리
- * @param {'web'|'app'} name
- */
-function initPageViewer(name) {
-  initCarousel({
-    prevId: `${name}-prev`,
-    nextId: `${name}-next`,
-    dotsId: `${name}-dots`,
-    count:  3,
-    show:   (index) => { document.getElementById(`mockup-${name}`).dataset.page = index; },
-  });
-}
-
-/** 스포이드로 색 선택됐을 때 */
-function handleEyedropperPick(hex, chipIdx) {
-  const newPalette = [...state.palette];
-  newPalette[chipIdx] = hex;
-
-  const newMyPicks = new Set(state.myPicks);
-  newMyPicks.add(chipIdx);
-
-  const roles = assignRoles(newPalette);
-  setState({ palette: newPalette, myPicks: newMyPicks, roles, isDirty: true });
-  updateUI();
-}
-
-/**
- * my pick X 버튼을 눌렀을 때
- * - 해당 칩의 my pick 해제
- * - 후보색 중 나머지 4색과 가장 다른 색으로 교체
- */
-function handleMyPickRemove(chipIdx) {
-  const { myPicks } = state;
-
-  /* 색은 그대로 두고 my pick 상태만 해제 */
-  const newMyPicks = new Set(myPicks);
-  newMyPicks.delete(chipIdx);
-
-  setState({ myPicks: newMyPicks, isDirty: true });
-  updateUI();
-}
-
-/**
- * 저장 안 된 작업이 있으면 홈으로 가도 되는지 확인 (카드 불러오기와 같은 방식)
- * @returns {boolean} 가도 되면 true
- */
-function confirmLeaveWorkspace() {
-  if (!state.isDirty) return true;
-  return window.confirm(
-    '저장하지 않은 작업이 있어요.\n처음 화면으로 가면 현재 작업이 사라집니다. 계속할까요?'
-  );
-}
-
-/** 홈 버튼(앱 타이틀) 클릭 */
-function handleHomeClick() {
-  if (!confirmLeaveWorkspace()) return;
-  resetToHome();
-  /* 주소의 작업 화면 표시 제거 */
-  if (location.hash === WORK_HASH) history.replaceState(null, '', HOME_URL);
-}
-
-/**
- * 브라우저 뒤로가기·앞으로가기
- * - 작업 화면에서 뒤로가기 → 홈으로 (저장 안 된 작업이 있으면 확인)
- * - 홈에서 앞으로가기 → 되살릴 작업이 없으므로 홈에 머무름
- */
-function handlePopState() {
-  const inWorkspace = !document.getElementById('workspace').hidden;
-
-  if (location.hash === WORK_HASH) {
-    if (!inWorkspace) history.replaceState(null, '', HOME_URL);
-    return;
-  }
-  if (!inWorkspace) return;
-
-  if (!confirmLeaveWorkspace()) {
-    /* 취소: 작업 화면에 그대로 — 방금 빠져나온 기록을 다시 채움 */
-    history.pushState(null, '', WORK_HASH);
-    return;
-  }
-  resetToHome();
-}
-
-/** Esc: 프롬프트 모달 → 서랍 → 스포이드 순으로 열려 있는 것 하나를 닫음 */
-function handleEscape(e) {
-  if (e.key !== 'Escape') return;
-
-  if (!document.getElementById('prompt-modal').hidden) {
-    closePromptModal();
-  } else if (!document.getElementById('drawer-panel').hidden) {
-    closeDrawer();
-  } else {
-    deactivateEyedropper();
-  }
-}
-
-/**
- * 새로고침 전에 하던 작업을 되살림 (storage.js가 sessionStorage에 보관해 둔 상태)
- * - 사진을 올려 작업하던 중이었으면 사진까지, 서랍 카드를 보던 중이었으면 읽기 전용으로
- */
-function restoreSession() {
-  const saved = loadSession();
-
-  if (!saved?.palette?.length || !saved.roles) {
-    /* 되살릴 작업이 없는데 주소만 작업 화면이면 홈 주소로 정리 */
-    if (location.hash === WORK_HASH) history.replaceState(null, '', HOME_URL);
-    return;
-  }
-
-  const apply = (img) => {
-    setState({
-      image:           img,
-      previewImage:    img ? saved.previewImage : null,
-      candidateColors: saved.candidateColors ?? [],
-      palette:         saved.palette,
-      myPicks:         new Set(saved.myPicks ?? []),
-      roles:           saved.roles,
-      contrastOffset:  saved.contrastOffset ?? 0,
-      mode:            saved.mode ?? 'light',
-      loadedCardKey:   saved.loadedCardKey ?? null,
-      paletteHistory:  saved.paletteHistory ?? [],
-      isDirty:         Boolean(saved.isDirty),
-    });
-
-    document.getElementById('contrast-slider').value = state.contrastOffset;
-    syncModeButtons(state.mode);
-
-    showWorkspace();
-    document.getElementById('image-display').hidden = !img;
-    setReadonlyView(!img);   /* 사진이 없으면 서랍 카드처럼 읽기 전용 */
-    renderPaletteHistory();
-    updateUI();
-  };
-
-  if (saved.previewImage) restoreImage(saved.previewImage, apply);
-  else apply(null);
-}
-
-/**
- * 초기 화면으로 완전 리셋
- */
-function resetToHome() {
-  /* 상태 초기화 */
+  cancelEyedropper();
+  resetPalette();
+  drawPhoto(null);
   setState({
+    view: 'work',
     image: null,
     previewImage: null,
-    candidateColors: [],
+    candidates: [],
+    attempt: 0,
+    recentSignatures: [],
+    palette: card.palette,
+    myPicks: new Set(card.myPicks ?? []),
+    roles: card.roles ?? assignRoles(card.palette),
+    contrastOffset: card.contrastOffset ?? 0,
+    mode: card.mode ?? 'light',
+    paletteStyle: card.paletteStyle ?? 'natural',
+    /* v1 카드에는 브랜드 설정이 없다 → 기본값 */
+    brand: { ...defaultBrand(), ...(card.brand ?? {}) },
+    paletteHistory: [],
+    loadedCardKey: key,
+    isDirty: false,
+  });
+  syncSegments();
+  showView('work');
+  updateUI();
+  toast(card.brand ? `${card.brand.wordmark || '브랜드'}를 불러왔어요` : '실습 때 저장한 팔레트를 불러왔어요. 브랜드 설정은 기본값이에요', { icon: 'drawer' });
+}
+
+/** 새로고침 복원용 상태 (첫 화면이면 비운다) */
+function sessionSnapshot() {
+  if (state.view !== 'work' || !state.roles) return null;
+  const s = state;
+  return {
+    ...cardSnapshot(),
+    previewImage: s.image ? s.previewImage : null,
+    candidates: s.candidates,
+    attempt: s.attempt,
+    recentSignatures: s.recentSignatures,
+    paletteHistory: s.paletteHistory,
+    loadedCardKey: s.loadedCardKey,
+    isDirty: s.isDirty,
+    canvasView: s.canvasView,
+  };
+}
+
+async function restoreSession() {
+  const saved = loadSession();
+  if (!saved?.palette?.length || !saved.roles) {
+    clearWorkHash();
+    return;
+  }
+  const img = saved.previewImage ? await restoreImage(saved.previewImage) : null;
+  drawPhoto(img);
+  setState({
+    view: 'work',
+    image: img,
+    previewImage: img ? saved.previewImage : null,
+    candidates: img ? saved.candidates ?? [] : [],
+    attempt: saved.attempt ?? 0,
+    recentSignatures: saved.recentSignatures ?? [],
+    palette: saved.palette,
+    myPicks: new Set(saved.myPicks ?? []),
+    roles: saved.roles,
+    contrastOffset: saved.contrastOffset ?? 0,
+    mode: saved.mode ?? 'light',
+    paletteStyle: saved.paletteStyle ?? 'natural',
+    brand: { ...defaultBrand(), ...(saved.brand ?? {}) },
+    paletteHistory: saved.paletteHistory ?? [],
+    loadedCardKey: saved.loadedCardKey ?? null,
+    isDirty: Boolean(saved.isDirty),
+    canvasView: saved.canvasView ?? 'board',
+  });
+  syncSegments();
+  showView('work', { push: !isWorkHash() });
+  showCanvasView(state.canvasView);
+  updateUI();
+  if (state.canvasView !== 'board') refitMockup(state.canvasView);
+}
+
+/** 세그먼트들을 상태에 맞춘다 (불러오기·복원 뒤) */
+function syncSegments() {
+  styleSeg.set(state.paletteStyle);
+  modeSeg.set(state.mode);
+  canvasSeg.set(state.canvasView);
+  showCanvasView(state.canvasView);
+}
+
+/* ==========================================================
+   첫 화면으로
+   ========================================================== */
+
+async function confirmLeave() {
+  if (!state.isDirty) return true;
+  return confirmDialog({
+    title: '처음 화면으로 갈까요?',
+    body: '지금 만든 팔레트와 시안은 저장되지 않았어요.',
+    confirmText: '처음 화면으로',
+    cancelText: '계속 작업하기',
+  });
+}
+
+async function goHome() {
+  if (state.view !== 'work') return;
+  if (!(await confirmLeave())) return;
+  resetToHome();
+}
+
+/** 브라우저 뒤로 가기 */
+async function handlePopState() {
+  if (isWorkHash() || state.view !== 'work') return;
+  if (!(await confirmLeave())) {
+    pushWorkHash(); /* 취소: 빠져나온 기록을 다시 채운다 */
+    return;
+  }
+  resetToHome();
+}
+
+function resetToHome() {
+  cancelEyedropper();
+  setState({
+    view: 'home',
+    image: null,
+    previewImage: null,
+    candidates: [],
+    attempt: 0,
+    recentSignatures: [],
     palette: [],
     myPicks: new Set(),
     roles: null,
     contrastOffset: 0,
-    mode: 'light',
+    paletteHistory: [],
     loadedCardKey: null,
     isDirty: false,
-    paletteHistory: [],
   });
+  resetPaletteTheme();
+  clearLogo();
+  renderHomeSaved();
+  showView('home');
+  clearWorkHash();
+  /* 새 화면이므로 이전 화면의 포커스(로고 링 등)를 지운다 */
+  document.activeElement?.blur?.();
+}
 
-  /* 홈 화면으로 전환 */
-  showHomeScreen();
+/* ==========================================================
+   아이콘·화면 모드
+   ========================================================== */
 
-  /* 워크스페이스 내부 상태 초기화 */
-  document.getElementById('upload-placeholder').hidden     = false;
-  document.getElementById('image-display').hidden          = true;
-  document.getElementById('chips-section').hidden          = true;
-  document.getElementById('mockup-viewer-footer').hidden   = true;
-  /* 프롬프트 아이콘 버튼 숨김 */
-  const promptBtn = document.getElementById('btn-prompt-icon');
-  if (promptBtn) promptBtn.hidden = true;
+/** data-icon 속성을 실제 아이콘으로 채운다 */
+function hydrateIcons(root) {
+  root.querySelectorAll('[data-icon]').forEach((el) => el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon)));
+  root.querySelectorAll('[data-icon-only]').forEach((el) => { el.innerHTML = icon(el.dataset.iconOnly); });
+  root.querySelectorAll('[data-i]').forEach((el) => { el.outerHTML = icon(el.dataset.i); });
+}
 
-  /* 슬라이더·모드 버튼 리셋 */
-  document.getElementById('contrast-slider').value = 0;
-  syncModeButtons('light');
+const UI_MODES = {
+  system: { icon: 'contrast', label: '화면: 시스템 설정 따름' },
+  light:  { icon: 'sun',      label: '화면: 라이트' },
+  dark:   { icon: 'moon',     label: '화면: 다크' },
+};
+const NEXT_MODE = { system: 'light', light: 'dark', dark: 'system' };
 
-  /* 히스토리 카드 DOM 비우기 + 보관 경고 숨김 */
-  const historyEl = document.getElementById('palette-history');
-  if (historyEl) historyEl.innerHTML = '';
-  document.getElementById('keep-warning').hidden = true;
-  document.getElementById('chips-note').hidden   = true;
-
-  /* 읽기 전용 뷰 해제 */
-  setReadonlyView(false);
-
-  /* 홈 화면 팔레트 목록 갱신 */
-  renderHomePalettes();
-
-  /* 진행 중이던 스포이드 모드 해제 */
-  deactivateEyedropper();
+function initUiModeButton() {
+  const btn = document.getElementById('btn-ui-mode');
+  const render = (mode) => {
+    btn.innerHTML = icon(UI_MODES[mode].icon);
+    btn.setAttribute('aria-label', `${UI_MODES[mode].label}. 눌러서 바꾸기`);
+    btn.setAttribute('data-tooltip', UI_MODES[mode].label);
+  };
+  render(getUiMode());
+  btn.addEventListener('click', () => {
+    const next = NEXT_MODE[getUiMode()];
+    setUiMode(next);
+    render(next);
+  });
 }

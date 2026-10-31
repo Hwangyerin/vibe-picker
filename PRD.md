@@ -89,7 +89,7 @@
 8. 사용자는 **설정 패널**에서 브랜드 시스템을 조절한다. 바꾸는 즉시 보드와 적용 화면에 반영된다.
    | 설정 | 선택지 | 기본값 |
    | --- | --- | --- |
-   | 화면 | 라이트 / 다크 | 라이트 |
+   | 화면 (캔버스 도구 막대) | 라이트 / 다크 | 라이트 |
    | 심볼 | 이미지 업로드 / 모노그램 | 모노그램 |
    | 워드마크 | 텍스트 입력 (최대 16자) | 사진 분위기에 맞춘 예시 이름 |
    | 강조색 | 팔레트 5색 중 선택 + 밝기·채도 미세 조정 | 자동 배정된 메인 색 |
@@ -101,8 +101,8 @@
    | 카드 둥글기 | 없음 / 작게 / 보통 / 크게 | 보통 |
    | 버튼·입력창 둥글기 | 없음 / 작게 / 보통 / 크게 / 완전 | 크게 |
 9. 사용자는 **사진 분위기에 맞는 서체 추천**을 받는다.
-   - 팔레트의 밝기·채도·대비·따뜻함으로 분위기(차분함/선명함/따뜻함/단단함)를 정하고, 서체마다 붙인 분위기 태그와 맞춰 상위 3개에 `추천` 표시를 붙인다.
-   - 서체 목록은 상업적으로 무료인 한글 서체 10~14개로 한정한다. (예: Pretendard, Noto Sans KR, Noto Serif KR, Gowun Batang, Gowun Dodum, Nanum Myeongjo, IBM Plex Sans KR, Hahmlet, Black Han Sans, Do Hyeon, Gothic A1, SUIT)
+   - 팔레트의 밝기·채도·대비·따뜻함으로 분위기(차분함/선명함/따뜻함/단단함)를 정하고, 서체마다 붙인 분위기 값과의 코사인 유사도로 상위 3개에 `추천` 표시를 붙인다.
+   - 서체 목록은 상업적으로 무료인 한글 서체 12개: Pretendard, SUIT, Noto Sans KR, IBM Plex Sans KR, Gothic A1, 고운돋움, Noto Serif KR, 고운바탕, 나눔명조, 함렛, 검은고딕, 도현
    - 서체를 고르기 전에도 목록에서 각 서체가 실제 워드마크로 어떻게 보이는지 미리 보인다.
 10. 사용자는 색 역할(배경, 글자, 메인, 포인트, 보조)을 **랜덤 섞기**로 다시 배정하고, **대비 슬라이더**로 명도 대비를 조절할 수 있다. 읽기 어려운 조합에는 경고와 대비 수치가 뜬다. (v1 유지)
 
@@ -191,6 +191,7 @@ VibePicker 자체의 디자인 시스템은 `docs/design-system.md`에 정의하
   - `css/base.css`: 초기화, 기본 요소
   - `css/components.css`: 버튼, 입력, 세그먼트, 슬라이더, 칩, 창, 시트, 토스트
   - `css/layout.css`: 첫 화면, 작업 화면 3단 배치, 반응형
+  - `css/rail.css`: 왼쪽 레일 (사진, 팔레트 칩, 시안, 색 역할, 대비)
   - `css/board.css`: 브랜드 보드
   - `css/mockups.css`: 모바일 웹·슬라이드 목업 (브랜드 변수 `--b-*`만 사용)
   - `css/motion.css`: 공통 전환·등장 모션, reduced-motion 처리
@@ -207,8 +208,9 @@ VibePicker 자체의 디자인 시스템은 `docs/design-system.md`에 정의하
   - `js/icons.js`: 아이콘 세트 불러오기와 캐시
   - `js/board.js`: 브랜드 보드 그리기
   - `js/mockups.js`: 모바일 웹·슬라이드 그리기, 넘기기
-  - `js/export.js`: 프롬프트·CSS·Tailwind·JSON 만들기
-  - `js/storage.js`: 저장, 서랍, localStorage, 새로고침 복원
+  - `js/export.js`: 프롬프트·CSS·Tailwind·JSON 만들기 / `js/export-dialog.js`: 내보내기 창
+  - `js/storage.js`: 서랍(localStorage)·새로고침 복원(sessionStorage) 읽고 쓰기 / `js/drawer.js`: 서랍 창·첫 화면 저장한 브랜드 / `css/drawer.css`
+  - `js/chips.js`: 사진 영역, 팔레트 칩, 복사, 스포이드 / `js/rail.js`: 색 역할·대비·시안 그리기 / `js/view.js`: 화면 전환·뒤로 가기
   - `js/ui/`: `dialog.js`(확인 창), `sheet.js`(바텀 시트), `toast.js`(알림), `theme.js`(사진에 물드는 UI)
   - `docs/design-system.md`: VibePicker 디자인 시스템 문서
   - `docs/qa/`: 점검 기록과 스크린샷
@@ -227,8 +229,8 @@ VibePicker 자체의 디자인 시스템은 `docs/design-system.md`에 정의하
 ## 9. 결정하거나 조사해야 할 것 (열린 질문)
 
 - 중간고사 제출 마감일 (Todo 우선순위를 여기에 맞춘다)
-- 서체 목록 최종 확정과 각 서체의 분위기 태그 (10-1에서 정한다)
-- 워드마크 기본 예시 이름을 어떻게 정할지 (고정 이름 vs 분위기별 예시 이름)
+- ~~서체 목록 최종 확정과 각 서체의 분위기 태그~~ → 12개로 정함 (`js/fonts.js`, 11-4)
+- ~~워드마크 기본 예시 이름~~ → 목업의 가상 서비스 이름 "Planit"으로 고정 (11-1)
 - 사진 분위기 → 서체 추천이 실제로 어울리는지 (친구 3명에게 확인)
 
 ## 10. 완성 기준 (이러면 성공!)

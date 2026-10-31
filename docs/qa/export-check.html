@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>내보낸 CSS 확인 · VibePicker</title>
+  <!-- 13-6: VibePicker가 아무 스타일도 없는 빈 페이지에서
+       "내보내기 > CSS 변수"를 붙여 넣으면 같은 색·서체·둥글기가 나오는지 확인하는 페이지.
+       아래 칸에 붙여 넣으면 오른쪽 견본이 그 CSS만으로 칠해진다. -->
+  <style>
+    body { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 100vh; font: 14px system-ui, sans-serif; }
+    textarea { width: 100%; height: 100%; box-sizing: border-box; padding: 16px; border: 0; border-right: 1px solid #ddd; font: 12px ui-monospace, monospace; resize: none; }
+    #out { padding: 40px; }
+  </style>
+  <style id="pasted"></style>
+  <style>
+    /* 견본: 내보낸 변수만 쓴다 (VibePicker CSS는 하나도 불러오지 않음) */
+    .demo { background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); padding: 32px; border-radius: var(--radius-card); }
+    .demo h1 { font-family: var(--font-display); font-weight: var(--font-display-weight); font-size: 36px; margin: 0 0 8px; }
+    .demo p { color: var(--color-muted); margin: 0 0 24px; }
+    .demo .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); padding: 20px; margin-bottom: 16px; }
+    .demo .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .demo .btn { height: 44px; padding: 0 18px; border: 0; border-radius: var(--radius-control); font: 600 15px var(--font-body); }
+    .demo .primary { background: var(--color-primary); color: var(--color-on-primary); }
+    .demo .secondary { background: var(--color-secondary); color: var(--color-on-secondary); }
+    .demo .tag { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: var(--radius-control); background: var(--color-point); font-size: 12px; }
+    .demo .grays { display: flex; height: 32px; border-radius: 8px; overflow: hidden; margin-top: 16px; }
+    .demo .grays i { flex: 1; }
+  </style>
+</head>
+<body>
+  <textarea id="css" placeholder="VibePicker 내보내기 > CSS 변수를 여기에 붙여 넣으세요" spellcheck="false"></textarea>
+  <div id="out">
+    <div class="demo">
+      <h1>오늘 할 일을 한곳에</h1>
+      <p>내보낸 CSS 변수만으로 칠한 견본입니다.</p>
+      <div class="card">
+        <strong>주간 회의</strong>
+        <p style="margin: 4px 0 12px">오후 3:00 · 3층 회의실</p>
+        <div class="row">
+          <button class="btn primary">일정 추가</button>
+          <button class="btn secondary">취소</button>
+          <span class="tag">D-3</span>
+        </div>
+      </div>
+      <div class="grays">
+        <i style="background: var(--gray-1)"></i><i style="background: var(--gray-2)"></i><i style="background: var(--gray-3)"></i><i style="background: var(--gray-4)"></i><i style="background: var(--gray-5)"></i>
+      </div>
+    </div>
+  </div>
+  <script>
+    const ta = document.getElementById('css');
+    const apply = () => { document.getElementById('pasted').textContent = ta.value; };
+    ta.addEventListener('input', apply);
+  </script>
+</body>
+</html>

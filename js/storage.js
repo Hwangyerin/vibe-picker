@@ -1,456 +1,115 @@
 /* ==========================================================
-   storage.js — 저장 버튼, 서랍, localStorage
-   팔레트 카드 최대 20개 저장, 새로고침 후에도 유지
+   storage.js — 서랍(localStorage)과 새로고침 복원(sessionStorage) (v2)
+   화면은 drawer.js가 그리고, 여기서는 읽고 쓰기만 한다.
+
+   카드 형식
+   - v1 (실습): { palette, myPicks, roles, contrastOffset, mode, savedAt }
+   - v2: v1 + { version: 2, brand, paletteStyle }
+   v1에서 저장한 카드도 그대로 읽는다 (브랜드 설정은 기본값으로)
    ========================================================== */
 
-import { state, setState } from './state.js';
-import { applyContrastToPalette } from './roles.js';
-
-/* localStorage 키 접두사 */
-const KEY_PREFIX = 'vp_card_';
-/* 카드 키 목록을 저장하는 키 */
-const INDEX_KEY  = 'vp_index';
-/* 최대 저장 개수 */
-const MAX_CARDS  = 20;
-
-/* =========================================================
-   저장 버튼
-   ========================================================= */
-
-/**
- * 저장 버튼 초기화
- */
-export function initSaveButton() {
-  const btn = document.getElementById('btn-save');
-  btn.addEventListener('click', saveCurrentCard);
-}
-
-/* "저장됨" 표시를 되돌리는 타이머 */
-let savedLabelTimer = null;
-
-/** 저장 직후 버튼 글자를 1.5초 동안 "저장됨"으로 바꿔 저장됐음을 알림 */
-function flashSaved(btn) {
-  btn.textContent = '✓ 저장됨';
-  btn.classList.add('is-saved');
-  clearTimeout(savedLabelTimer);
-  savedLabelTimer = setTimeout(() => resetSaveLabel(btn), 1500);
-}
-
-function resetSaveLabel(btn) {
-  clearTimeout(savedLabelTimer);
-  btn.textContent = '저장';
-  btn.classList.remove('is-saved');
-}
-
-/**
- * 현재 작업 상태를 카드로 저장
- */
-function saveCurrentCard() {
-  const { palette, myPicks, roles, contrastOffset, mode, loadedCardKey } = state;
-
-  if (!palette.length || !roles) return;
-
-  /* 카드 인덱스 불러오기 */
-  const index = loadIndex();
-
-  /* 최대 개수 초과 확인 */
-  if (!loadedCardKey && index.length >= MAX_CARDS) {
-    alert('서랍이 가득 찼어요. 오래된 카드를 지워 주세요.');
-    return;
-  }
-
-  /* 저장할 카드 데이터 (이미지는 저장하지 않음 — 팔레트 정보만) */
-  const card = {
-    palette,
-    myPicks: [...myPicks],
-    roles,
-    contrastOffset,
-    mode,
-    savedAt: Date.now(),
-  };
-
-  /* 덮어쓰기 or 새 카드 */
-  const key = loadedCardKey ?? `${KEY_PREFIX}${Date.now()}`;
-  localStorage.setItem(key, JSON.stringify(card));
-
-  /* 인덱스 업데이트 */
-  if (!index.includes(key)) {
-    index.push(key);
-    saveIndex(index);
-  }
-
-  /* 상태 업데이트 */
-  setState({ loadedCardKey: key, isDirty: false });
-
-  /* 저장 버튼 비활성화 + "저장됨" 잠깐 표시 */
-  const btn = document.getElementById('btn-save');
-  btn.disabled = true;
-  flashSaved(btn);
-
-  /* 서랍 열려있으면 목록 새로고침 */
-  if (!document.getElementById('drawer-panel').hidden) {
-    renderDrawerList();
-  }
-
-  /* 홈 화면 팔레트 목록 갱신 */
-  renderHomePalettes();
-}
-
-/* =========================================================
-   서랍 패널
-   ========================================================= */
-
-/**
- * 서랍 버튼·패널 초기화
- */
-export function initDrawer() {
-  const btnDrawer  = document.getElementById('btn-drawer');
-  const btnClose   = document.getElementById('btn-drawer-close');
-  const backdrop   = document.getElementById('drawer-backdrop');
-
-  btnDrawer.addEventListener('click', openDrawer);
-  btnClose.addEventListener('click', closeDrawer);
-  backdrop.addEventListener('click', closeDrawer);
-}
-
-function openDrawer() {
-  document.getElementById('drawer-backdrop').hidden = false;
-  document.getElementById('drawer-panel').hidden    = false;
-  renderDrawerList();
-}
-
-export function closeDrawer() {
-  document.getElementById('drawer-backdrop').hidden = true;
-  document.getElementById('drawer-panel').hidden    = true;
-}
-
-/**
- * 서랍 목록 렌더링
- */
-function renderDrawerList() {
-  const list  = document.getElementById('drawer-list');
-  const index = loadIndex();
-
-  if (index.length === 0) {
-    list.innerHTML = '<p class="drawer-empty">저장된 팔레트가 없어요.</p>';
-    return;
-  }
-
-  list.innerHTML = '';
-
-  /* 최근 저장 순서로 역순 표시 */
-  [...index].reverse().forEach((key) => {
-    const raw = localStorage.getItem(key);
-    if (!raw) return;
-    const card = JSON.parse(raw);
-    list.appendChild(buildCardEl(key, card));
-  });
-
-  /* 서랍 가득 찬 경고 */
-  if (index.length >= MAX_CARDS) {
-    const notice = document.createElement('p');
-    notice.className = 'drawer-full-notice';
-    notice.textContent = '서랍이 가득 찼어요. 오래된 카드를 지워 주세요.';
-    list.prepend(notice);
-  }
-}
-
-/**
- * 역할 비중에 따라 가로 색 바 DOM을 만들어 반환
- * roles가 있으면 비중 적용, 없으면 균등 분할
- * @param {object} card
- * @param {string} barClass - 바 wrapper에 붙일 클래스
- * @param {string} blockClass - 각 블록에 붙일 클래스
- */
-function buildColorBar(card, barClass, blockClass) {
-  const bar = document.createElement('div');
-  bar.className = barClass;
-
-  /* 역할별 비중: 배경 · 메인 · 포인트 · 보조 · 글자 순 (배경이 가장 넓고, 글자가 가장 좁음) */
-  const ROLE_FLEX = [4, 3, 2, 1.5, 1];
-
-  /* 저장할 때 화면에 보이던 색(대비 슬라이더 적용)으로 표시 */
-  const colors = applyContrastToPalette(colorsByRole(card), card.roles, card.contrastOffset);
-
-  colors.forEach((hex, i) => {
-    const flex = ROLE_FLEX[i] ?? 1;
-    const block = document.createElement('div');
-    block.className = blockClass;
-    block.style.backgroundColor = hex;
-    block.style.flex = String(flex);
-    /* 홈 카드에만 stagger 딜레이: 왼쪽 → 오른쪽 순서로 촤라락 */
-    if (blockClass === 'home-palette-block') {
-      block.style.animationDelay = `${i * 110}ms`;
-    }
-    bar.appendChild(block);
-  });
-
-  return bar;
-}
-
-/**
- * 카드의 5색을 역할 순서(배경 · 메인 · 포인트 · 보조 · 글자)로 정렬
- * - 배경 자리는 배경의 바탕이 된 팔레트 색(다른 역할에 안 쓰인 색)
- * - 예전 방식으로 저장돼 역할과 색이 하나씩 짝지어지지 않는 카드는 팔레트 순서 그대로
- * @param {{ palette: string[], roles?: object }} card
- * @returns {string[]}
- */
-function colorsByRole({ palette, roles }) {
-  if (!roles) return palette;
-
-  const used  = [roles.main, roles.point, roles.sub, roles.text];
-  const seeds = palette.filter((hex) => !used.includes(hex));
-  const ordered = [seeds[0], ...used];
-
-  const oneToOne = seeds.length === 1
-    && new Set(ordered).size === palette.length
-    && ordered.every((hex) => palette.includes(hex));
-  return oneToOne ? ordered : palette;
-}
-
-/**
- * 팔레트 카드 DOM 요소 생성
- */
-function buildCardEl(key, card) {
-  const el = document.createElement('div');
-  el.className = 'palette-card';
-
-  /* 역할 비중 가로 바 */
-  const bar = buildColorBar(card, 'card-color-bar', 'card-bar-block');
-
-  /* 삭제 버튼 */
-  const btnDel = document.createElement('button');
-  btnDel.className = 'btn-card-delete';
-  btnDel.textContent = '✕';
-  btnDel.title = '카드 삭제';
-  btnDel.addEventListener('click', (e) => {
-    e.stopPropagation();
-    deleteCard(key);
-    renderDrawerList();
-  });
-
-  /* 카드 클릭 → 팔레트 불러오기 (확인 후 서랍 닫기) */
-  el.addEventListener('click', () => {
-    if (state.isDirty) {
-      const ok = window.confirm(
-        '저장하지 않은 작업이 있어요.\n지금 불러오면 현재 작업이 사라집니다. 계속할까요?'
-      );
-      if (!ok) return;
-    }
-    closeDrawer();
-    onCardLoaded?.(card, key);
-  });
-
-  el.appendChild(bar);
-  el.appendChild(btnDel);
-
-  /* 저장 날짜 (예: 10월 12일 오후 9:14) */
-  if (card.savedAt) {
-    const date = document.createElement('span');
-    date.className = 'card-date';
-    date.textContent = formatSavedAt(card.savedAt);
-    el.appendChild(date);
-  }
-
-  return el;
-}
-
-/**
- * 저장 시각을 "10월 12일 오후 9:14" 형태로 표시
- * @param {number} savedAt - Date.now() 값
- */
-function formatSavedAt(savedAt) {
-  const date = new Date(savedAt);
-  const day  = date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
-  const time = date.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
-  return `${day} ${time}`;
-}
-
-/* =========================================================
-   홈 화면 저장된 팔레트 목록
-   ========================================================= */
-
-/**
- * 홈 화면에 저장된 팔레트 카드 목록을 렌더링
- * 저장된 카드가 없으면 섹션 자체를 숨김
- */
-export function renderHomePalettes() {
-  const section = document.getElementById('home-palettes-section');
-  const grid    = document.getElementById('home-palettes-grid');
-  if (!section || !grid) return;
-
-  const index = loadIndex();
-  if (index.length === 0) {
-    section.hidden = true;
-    return;
-  }
-
-  /* 홈 화면일 때만 표시 */
-  const onHomeScreen = !document.getElementById('home-screen').hidden;
-  if (!onHomeScreen) return;
-
-  section.hidden = false;
-  grid.innerHTML = '';
-
-  [...index].reverse().forEach((key) => {
-    const raw = localStorage.getItem(key);
-    if (!raw) return;
-    const card = JSON.parse(raw);
-
-    const el = document.createElement('button');
-    el.className = 'home-palette-card';
-    el.title = card.savedAt
-      ? `이 팔레트 불러오기 · ${formatSavedAt(card.savedAt)} 저장`
-      : '이 팔레트 불러오기';
-
-    /* 역할 비중 가로 바 */
-    const bar = buildColorBar(card, 'home-palette-bar', 'home-palette-block');
-
-    el.appendChild(bar);
-
-    el.addEventListener('click', () => {
-      loadCard(key, card);
-    });
-
-    grid.appendChild(el);
-  });
-}
-
-/* =========================================================
-   카드 불러오기 (main.js로 콜백 위임)
-   ========================================================= */
-
-let onCardLoaded = null;
-
-/**
- * 카드 불러오기 콜백 등록 (main.js에서 등록)
- * @param {(card: object, key: string) => void} fn
- */
-export function setOnCardLoaded(fn) {
-  onCardLoaded = fn;
-}
-
-/**
- * 저장된 카드를 작업 화면으로 불러옴
- * 저장되지 않은 작업이 있으면 확인 다이얼로그 표시
- */
-function loadCard(key, card) {
-  if (state.isDirty) {
-    const ok = window.confirm(
-      '저장하지 않은 작업이 있어요.\n지금 불러오면 현재 작업이 사라집니다. 계속할까요?'
-    );
-    if (!ok) return;
-  }
-  onCardLoaded?.(card, key);
-}
-
-/* =========================================================
-   카드 삭제
-   ========================================================= */
-
-function deleteCard(key) {
-  localStorage.removeItem(key);
-  const index = loadIndex().filter((k) => k !== key);
-  saveIndex(index);
-
-  /* 현재 불러온 카드를 삭제하면 loadedCardKey 초기화 */
-  if (state.loadedCardKey === key) {
-    setState({ loadedCardKey: null });
-  }
-
-  /* 홈 화면 팔레트 목록 갱신 */
-  renderHomePalettes();
-}
-
-/* =========================================================
-   localStorage 헬퍼
-   ========================================================= */
-
-function loadIndex() {
-  try {
-    return JSON.parse(localStorage.getItem(INDEX_KEY) ?? '[]');
-  } catch {
-    return [];
-  }
-}
-
-function saveIndex(index) {
-  localStorage.setItem(INDEX_KEY, JSON.stringify(index));
-}
-
-/* =========================================================
-   작업 중인 화면 임시 보관 (새로고침 대비)
-   - sessionStorage: 탭을 닫으면 사라짐, 서랍(localStorage)과는 별개
-   ========================================================= */
-
+const KEY_PREFIX = 'vp_card_';  /* v1과 같은 키 → 실습 때 저장한 카드도 서랍에 보인다 */
+const INDEX_KEY = 'vp_index';
 const SESSION_KEY = 'vp_session';
-let sessionTimer  = null;
+export const MAX_CARDS = 20;
 
-/**
- * 현재 작업 상태를 임시 보관 (subscribe로 상태가 바뀔 때마다 호출)
- * 슬라이더처럼 연속으로 바뀌는 경우를 위해 0.3초 모아서 한 번만 기록
- * @param {object} s - state
- * @param {boolean} immediate - true면 기다리지 않고 바로 기록 (페이지를 떠날 때)
- */
-export function saveSession(s, immediate = false) {
-  clearTimeout(sessionTimer);
-  if (immediate) writeSession(s);
-  else sessionTimer = setTimeout(() => writeSession(s), 300);
+/* ---------- localStorage를 쓸 수 없는 브라우저(사생활 보호 창 등)에서도 앱은 동작해야 한다 ---------- */
+
+function read(store, key, fallback) {
+  try {
+    const raw = store.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
-function writeSession(s) {
-  /* 작업 중인 팔레트가 없으면(홈 화면) 보관분 삭제 */
-  if (!s.palette.length || !s.roles) {
-    sessionStorage.removeItem(SESSION_KEY);
-    return;
+function write(store, key, value) {
+  try {
+    store.setItem(key, JSON.stringify(value));
+    return true;
+  } catch {
+    return false; /* 용량 초과 또는 저장 막힘 */
   }
+}
 
-  const data = {
-    previewImage:    s.previewImage,
-    candidateColors: s.candidateColors,
-    palette:         s.palette,
-    myPicks:         [...s.myPicks],
-    roles:           s.roles,
-    contrastOffset:  s.contrastOffset,
-    mode:            s.mode,
-    loadedCardKey:   s.loadedCardKey,
-    isDirty:         s.isDirty,
-    paletteHistory:  s.paletteHistory,
+/* ==========================================================
+   서랍
+   ========================================================== */
+
+/**
+ * 저장한 카드 목록 (최근 저장 순)
+ * @returns {Array<{ key: string, card: object }>}
+ */
+export function listCards() {
+  const index = read(localStorage, INDEX_KEY, []);
+  return index
+    .map((key) => ({ key, card: read(localStorage, key, null) }))
+    .filter(({ card }) => card?.palette?.length)
+    .sort((a, b) => (b.card.savedAt ?? 0) - (a.card.savedAt ?? 0));
+}
+
+/**
+ * 카드 저장 (key가 있으면 덮어쓰기)
+ * @param {object} card
+ * @param {string|null} key
+ * @returns {{ ok: true, key: string } | { ok: false, reason: 'full' | 'quota' }}
+ */
+export function saveCard(card, key = null) {
+  const index = read(localStorage, INDEX_KEY, []);
+  const exists = key && index.includes(key);
+  if (!exists && index.length >= MAX_CARDS) return { ok: false, reason: 'full' };
+
+  const k = exists ? key : `${KEY_PREFIX}${Date.now()}`;
+  if (!write(localStorage, k, { version: 2, ...card, savedAt: Date.now() })) {
+    return { ok: false, reason: 'quota' };
+  }
+  if (!exists) write(localStorage, INDEX_KEY, [...index, k]);
+  return { ok: true, key: k };
+}
+
+/** 카드 지우기 */
+export function deleteCard(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* 무시 */
+  }
+  write(localStorage, INDEX_KEY, read(localStorage, INDEX_KEY, []).filter((k) => k !== key));
+}
+
+/** 카드 하나 읽기 */
+export function getCard(key) {
+  return read(localStorage, key, null);
+}
+
+/* ==========================================================
+   새로고침 복원 — 탭을 닫으면 사라진다 (서랍과는 별개)
+   ========================================================== */
+
+let timer = 0;
+
+/**
+ * 작업 상태 임시 보관. 자주 불리므로 0.3초 모아서 쓴다
+ * @param {object} data
+ * @param {boolean} [now] - 페이지를 떠나기 직전에는 바로
+ */
+export function saveSession(data, now = false) {
+  clearTimeout(timer);
+  const run = () => {
+    if (!data) {
+      try { sessionStorage.removeItem(SESSION_KEY); } catch { /* 무시 */ }
+      return;
+    }
+    /* 사진까지 담으면 용량이 넘칠 수 있다 → 넘치면 사진만 빼고 다시 */
+    if (!write(sessionStorage, SESSION_KEY, data)) {
+      write(sessionStorage, SESSION_KEY, { ...data, previewImage: null });
+    }
   };
-
-  try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
-  } catch {
-    /* 용량 초과: 사진은 포기하고 팔레트만이라도 보관 */
-    try {
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...data, previewImage: null }));
-    } catch { /* 보관 실패 — 앱 동작에는 영향 없음 */ }
-  }
+  if (now) run();
+  else timer = setTimeout(run, 300);
 }
 
-/**
- * 임시 보관해 둔 작업 상태를 읽음 (없으면 null)
- */
 export function loadSession() {
-  try {
-    return JSON.parse(sessionStorage.getItem(SESSION_KEY));
-  } catch {
-    return null;
-  }
-}
-
-/* =========================================================
-   저장 버튼 활성화 감지 (상태 변화 구독)
-   ========================================================= */
-
-/**
- * state.isDirty가 true이면 저장 버튼 활성화
- * subscribe()를 통해 state 변경 시마다 호출됨
- */
-export function onStateChange(newState) {
-  const btn = document.getElementById('btn-save');
-  if (!btn) return;
-  btn.disabled = !newState.isDirty;
-  /* 저장 직후 다시 바꾸기 시작하면 "저장됨" 표시를 바로 거둠 */
-  if (newState.isDirty && btn.classList.contains('is-saved')) resetSaveLabel(btn);
+  return read(sessionStorage, SESSION_KEY, null);
 }

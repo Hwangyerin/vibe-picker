@@ -1,161 +1,175 @@
 /* ==========================================================
-   upload.js — 사진 올리기, 샘플 사진
-   파일 선택 / 드래그앤드롭 / 샘플 클릭 세 가지 경로 처리
+   upload.js — 사진 들여오기
+   파일 고르기 / 창 어디에나 끌어다 놓기 / 샘플 사진 세 가지 길
+   사진은 브라우저 안에서만 다루고 어디로도 보내지 않는다
    ========================================================== */
 
-import { setState } from './state.js';
+import { extractCandidates } from './extract.js';
+import { composePalette } from './palette.js';
 
-/* 샘플 사진 경로 (samples/ 폴더에 있어야 함) */
-const SAMPLE_PATHS = [
-  'samples/sample1.jpg',
-  'samples/sample2.jpg',
-  'samples/sample3.jpg',
-];
+/* 샘플: 작업에 쓰는 원본과 첫 화면 카드 */
+const SAMPLES = {
+  1: 'samples/sample1.jpg',
+  2: 'samples/sample2.jpg',
+  3: 'samples/sample3.jpg',
+};
 
-/* 이미지가 올라왔을 때 호출할 콜백 (main.js에서 등록) */
-let onImageLoaded = null;
+/* 사진을 사진 영역·색 추출에 쓸 때 긴 변 최대 크기 (원본이 커도 이 크기로 줄인다) */
+const WORK_MAX = 1600;
+
+let onImage = null;
 
 /**
- * 이미지 로드 콜백 등록
+ * 사진이 준비되면 부를 함수 등록 (main.js)
  * @param {(img: HTMLImageElement) => void} fn
  */
-export function setOnImageLoaded(fn) {
-  onImageLoaded = fn;
+export function setOnImage(fn) {
+  onImage = fn;
 }
 
-/**
- * 저장해 둔 프리뷰(base64)를 사진 영역에 다시 그림 (새로고침 뒤 복원)
- * - 색 추출은 다시 하지 않음: 팔레트는 저장된 값을 그대로 씀
- * @param {string} src - base64 data URL
- * @param {(img: HTMLImageElement|null) => void} onReady - 실패하면 null
- */
-export function restoreImage(src, onReady) {
-  const img = new Image();
-  img.onload = () => {
-    showImageDisplay(img);
-    onReady(img);
-  };
-  img.onerror = () => onReady(null);
-  img.src = src;
-}
-
-/**
- * 업로드 UI 초기화 — 이벤트 리스너 연결
- */
+/** 업로드 관련 이벤트 연결 */
 export function initUpload() {
-  const placeholder  = document.getElementById('upload-placeholder');
-  const fileInput    = document.getElementById('file-input');
-  const btnFile      = document.getElementById('btn-file');
-  const sampleThumbs = document.querySelectorAll('.sample-thumb');
+  const fileInput = document.getElementById('file-input');
 
-  /* 파일 선택 버튼 → file input 열기 */
-  btnFile.addEventListener('click', () => fileInput.click());
+  document.getElementById('btn-upload').addEventListener('click', () => fileInput.click());
 
-  /* 파일 선택됐을 때 */
-  fileInput.addEventListener('change', (e) => {
-    const file = e.target.files?.[0];
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files?.[0];
     if (file) loadFile(file);
-    /* input을 리셋해야 같은 파일을 다시 올릴 때도 change 이벤트가 발생 */
-    fileInput.value = '';
+    fileInput.value = ''; /* 같은 파일을 다시 골라도 change가 일어나게 */
   });
 
-  /* 드래그앤드롭: placeholder 영역 전체에서 받음 */
-  placeholder.addEventListener('dragover', (e) => {
-    e.preventDefault(); /* 기본 동작 막아야 drop 이벤트 발생 */
-    placeholder.classList.add('drag-over');
+  document.querySelectorAll('.sample').forEach((btn) => {
+    btn.addEventListener('click', () => loadSrc(SAMPLES[btn.dataset.sample]));
+    /* 마우스를 처음 올리거나 포커스가 오면 그 사진의 팔레트를 미리 뽑아 띠에 채운다 */
+    const prime = () => primeSampleStrip(btn);
+    btn.addEventListener('pointerenter', prime, { once: true });
+    btn.addEventListener('focus', prime, { once: true });
   });
-  placeholder.addEventListener('dragleave', () => {
-    placeholder.classList.remove('drag-over');
-  });
-  placeholder.addEventListener('drop', (e) => {
+
+  initWindowDrop();
+}
+
+/** 파일 고르기 창 열기 (헤더 등 다른 곳에서도 쓸 수 있게) */
+export function openFilePicker() {
+  document.getElementById('file-input').click();
+}
+
+/* ---------- 창 전체 끌어다 놓기 ---------- */
+
+function initWindowDrop() {
+  const overlay = document.getElementById('drop-overlay');
+  let depth = 0; /* 자식 요소를 지날 때마다 dragenter/leave가 반복되므로 깊이로 센다 */
+
+  const hasFiles = (e) => [...(e.dataTransfer?.types ?? [])].includes('Files');
+
+  window.addEventListener('dragenter', (e) => {
+    if (!hasFiles(e)) return;
     e.preventDefault();
-    placeholder.classList.remove('drag-over');
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) loadFile(file);
+    depth++;
+    overlay.hidden = false;
   });
 
-  /* 샘플 사진 클릭 */
-  sampleThumbs.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const idx = parseInt(btn.dataset.index, 10);
-      loadSample(SAMPLE_PATHS[idx]);
-    });
+  window.addEventListener('dragover', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+
+  window.addEventListener('dragleave', (e) => {
+    if (!hasFiles(e)) return;
+    depth = Math.max(0, depth - 1);
+    if (depth === 0) overlay.hidden = true;
+  });
+
+  window.addEventListener('drop', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth = 0;
+    overlay.hidden = true;
+    const file = [...e.dataTransfer.files].find((f) => f.type.startsWith('image/'));
+    if (file) loadFile(file);
   });
 }
 
-/* ---------- 내부 함수 ---------- */
+/* ---------- 읽기 ---------- */
 
-/**
- * File 객체를 읽어 이미지로 로드
- * @param {File} file
- */
 function loadFile(file) {
   if (!file.type.startsWith('image/')) return;
-  const reader = new FileReader();
-  reader.onload = (e) => loadSrc(e.target.result);
-  reader.readAsDataURL(file);
+  /* 파일을 서버로 보내지 않고 브라우저 메모리 주소로만 연다 */
+  const url = URL.createObjectURL(file);
+  loadSrc(url, () => URL.revokeObjectURL(url));
 }
 
-/**
- * URL(data URL 또는 경로)을 이미지로 로드
- * @param {string} src
- */
-function loadSrc(src) {
+function loadSrc(src, cleanup) {
   const img = new Image();
+  img.decoding = 'async';
   img.onload = () => {
-    /* 상태에 이미지 저장 */
-    setState({ image: img, isDirty: true });
-
-    /* 사진 표시 영역 전환 */
-    showImageDisplay(img);
-
-    /* 프리뷰(800px) 생성 후 상태에 저장 — 새로고침 뒤 복원용 */
-    setState({ previewImage: makePreviewImage(img) });
-
-    /* 색 추출 등 후속 작업을 main.js가 처리 */
-    onImageLoaded?.(img);
+    const work = downscale(img, WORK_MAX);
+    cleanup?.();
+    onImage?.(work);
   };
-  img.onerror = () => console.error('이미지를 불러오지 못했습니다:', src);
+  img.onerror = () => {
+    cleanup?.();
+    console.error('사진을 불러오지 못했어요:', src);
+  };
   img.src = src;
 }
 
 /**
- * 샘플 사진 경로로 로드
- * @param {string} path
+ * 큰 사진은 긴 변을 max로 줄인 이미지로 바꾼다 (스포이드·추출을 가볍게)
+ * @returns {HTMLCanvasElement|HTMLImageElement}
  */
-function loadSample(path) {
-  loadSrc(path);
+function downscale(img, max) {
+  const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+  if (scale === 1) return img;
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.naturalWidth * scale);
+  c.height = Math.round(img.naturalHeight * scale);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return c;
 }
 
 /**
- * 캔버스에 사진을 그림
- * (화면 전환은 main.js handleImageLoaded에서 처리)
- * @param {HTMLImageElement} img
+ * 새로고침 뒤 되살리기용 작은 사진 (base64)
+ * @param {HTMLCanvasElement|HTMLImageElement} img
  */
-function showImageDisplay(img) {
-  const canvas = document.getElementById('image-canvas');
-
-  /* 캔버스 크기를 이미지에 맞게 설정 */
-  canvas.width  = img.naturalWidth;
-  canvas.height = img.naturalHeight;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(img, 0, 0);
+export function makePreview(img, max = 800) {
+  const w0 = img.naturalWidth ?? img.width;
+  const h0 = img.naturalHeight ?? img.height;
+  const scale = Math.min(1, max / Math.max(w0, h0));
+  const c = document.createElement('canvas');
+  c.width = Math.round(w0 * scale);
+  c.height = Math.round(h0 * scale);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.88);
 }
 
 /**
- * 이미지를 프리뷰(base64)로 변환 (새로고침 뒤 복원용 — 최대 800px)
- * @param {HTMLImageElement} img
- * @param {number} maxW - 최대 너비 (기본 800px)
- * @returns {string} base64 data URL
+ * 저장해 둔 base64 사진을 다시 이미지로
+ * @param {string} src
+ * @returns {Promise<HTMLImageElement|null>}
  */
-function makePreviewImage(img, maxW = 800) {
-  const scale  = Math.min(1, maxW / img.naturalWidth);
-  const w = Math.round(img.naturalWidth  * scale);
-  const h = Math.round(img.naturalHeight * scale);
+export function restoreImage(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
 
-  const canvas = document.createElement('canvas');
-  canvas.width  = w;
-  canvas.height = h;
-  canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-  return canvas.toDataURL('image/jpeg', 0.92);
+/* ---------- 첫 화면 샘플 띠 ---------- */
+
+function primeSampleStrip(btn) {
+  const strip = btn.querySelector('.sample__strip');
+  /* 카드에 보이는 작은 사진이 아니라 실제로 쓸 원본으로 뽑아야 누른 뒤의 팔레트와 같다.
+     원본을 미리 받아 두는 효과도 있다 */
+  const img = new Image();
+  img.onload = () => {
+    const { colors } = composePalette(extractCandidates(img));
+    strip.innerHTML = colors.map((c) => `<i style="--c: ${c}"></i>`).join('');
+    strip.setAttribute('data-ready', '');
+  };
+  img.src = SAMPLES[btn.dataset.sample];
 }

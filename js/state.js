@@ -1,69 +1,75 @@
 /* ==========================================================
-   state.js — 현재 작업 상태와 변경 감지
-   앱 전체에서 공유하는 유일한 데이터 원천(single source of truth)
+   state.js — 작업 상태 (앱 전체가 함께 읽는 단 하나의 원천)
+   직접 바꾸지 말고 setState()로 바꾼다. 바뀌면 subscribe한 함수가 불린다
    ========================================================== */
 
-/**
- * 앱 상태 객체
- * - 모든 기능 모듈이 이 객체를 읽고 씀
- * - 직접 바꾸지 말고 반드시 setState()를 통해 변경
- */
 const state = {
-  /* 현재 올라온 이미지 (HTMLImageElement) */
+  /* 화면: 'home' | 'work' */
+  view: 'home',
+
+  /* 올라온 사진 (HTMLImageElement). 서랍에서 불러온 브랜드면 null */
   image: null,
 
-  /* 사진 프리뷰 (base64, 최대 800px — 새로고침 뒤 작업을 되살릴 때 사용) */
+  /* 새로고침 뒤 되살리기용 사진 (base64, 긴 변 800px) */
   previewImage: null,
 
-  /* 후보 색 10~12개 (k-means 결과, HEX 문자열 배열) */
-  candidateColors: [],
+  /* 사진에서 뽑은 후보 색 [{ hex, lab, lch, area }] (extract.js) */
+  candidates: [],
 
-  /* 현재 표시 중인 대표색 5개 (HEX 문자열 배열) */
+  /* 팔레트 스타일: 'natural' | 'vivid' | 'muted' | 'raw' */
+  paletteStyle: 'natural',
+
+  /* 다시 뽑기 횟수 (0이면 사진마다 항상 같은 첫 결과) */
+  attempt: 0,
+
+  /* 최근에 보여 준 조합 서명 (다시 뽑기에서 같은 조합을 피한다) */
+  recentSignatures: [],
+
+  /* 지금 팔레트 5색 (HEX 배열, 대비 조절 전 원본) */
   palette: [],
 
-  /* my pick 칩 인덱스 집합 (다시 뽑기 때 유지) */
+  /* 스포이드로 고른 칩 위치 (다시 뽑기에도 남는다) */
   myPicks: new Set(),
 
-  /* 색 역할 배정 결과
-     { bg, text, main, point, sub, bgDark, textDark } — 각각 HEX 문자열 */
+  /* 색 역할 { bg, text, main, point, sub, bgDark, textDark } */
   roles: null,
 
-  /* 대비 슬라이더 값 (-30 ~ +30, 기본 0) */
+  /* 대비 슬라이더 (-30 ~ 30) */
   contrastOffset: 0,
 
-  /* 현재 모드: 'light' | 'dark' */
+  /* 미리보기 모드: 'light' | 'dark' (VibePicker UI 모드와는 따로) */
   mode: 'light',
 
-  /* 서랍에서 불러온 카드의 localStorage 키 (덮어쓰기용) */
+  /* 브랜드 설정 (brand.js defaultBrand) — 워드마크, 강조색, 톤, 서체, 아이콘, 둥글기 */
+  brand: null,
+
+  /* 캔버스에 보이는 화면: 'board' | 'mobile' | 'slides' */
+  canvasView: 'board',
+
+  /* 보관한 시안 [{ palette, myPicks, roles, contrastOffset }] — 이 탭 안에서만 */
+  paletteHistory: [],
+
+  /* 서랍에서 불러온 브랜드의 저장 키 (고쳐서 저장하면 덮어쓴다) */
   loadedCardKey: null,
 
-  /* 저장되지 않은 변경이 있는지 여부 (저장 버튼 활성화 조건) */
+  /* 저장하지 않은 변경이 있는지 */
   isDirty: false,
-
-  /* 팔레트 히스토리: 사용자가 "보관" 버튼으로 담은 팔레트들 (세션 한정, localStorage 아님) */
-  paletteHistory: [], /* [{ palette: string[], myPicks: number[] }, ...] */
 };
 
-/**
- * 상태를 업데이트하고, 등록된 리스너를 호출
- * @param {Partial<typeof state>} patch - 바꿀 값만 담은 객체
- */
-function setState(patch) {
-  Object.assign(state, patch);
-
-  /* 상태가 바뀔 때마다 리스너에 알림 */
-  listeners.forEach((fn) => fn(state));
-}
-
-/**
- * 변경 감지 리스너 목록
- * 상태가 바뀌면 각 리스너가 순서대로 실행됨
- */
 const listeners = [];
 
 /**
- * 상태 변경 리스너 등록
- * @param {(state: typeof state) => void} fn
+ * 상태를 바꾸고 구독자에게 알린다
+ * @param {Partial<typeof state>} patch
+ */
+function setState(patch) {
+  Object.assign(state, patch);
+  listeners.forEach((fn) => fn(state, patch));
+}
+
+/**
+ * 상태가 바뀔 때마다 불릴 함수 등록
+ * @param {(state: typeof state, patch: object) => void} fn
  */
 function subscribe(fn) {
   listeners.push(fn);

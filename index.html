@@ -3,260 +3,214 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VibePicker</title>
+  <title>VibePicker — 사진 한 장으로 브랜드 만들기</title>
+  <meta name="description" content="사진의 분위기에서 색·서체·아이콘을 정해 모바일 웹과 슬라이드에 입혀 보고, AI 프롬프트와 CSS로 가져가는 도구" />
 
-  <!-- Pretendard 폰트: 예시 화면과 AI 프롬프트에 같은 폰트를 씀 -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <!-- 화면 모드를 먼저 적용해 다크 사용자가 흰 화면 깜빡임을 보지 않게 한다 -->
+  <script>
+    try {
+      const m = localStorage.getItem('vibepicker:ui-mode');
+      if (m === 'light' || m === 'dark') document.documentElement.setAttribute('data-theme', m);
+    } catch (e) {}
+  </script>
 
-  <!-- 공통 변수·리셋 -->
-  <link rel="stylesheet" href="css/v1/base.css" />
-  <!-- 전체 레이아웃 배치 -->
-  <link rel="stylesheet" href="css/v1/layout.css" />
-  <!-- 컬러칩 스타일 -->
-  <link rel="stylesheet" href="css/v1/chips.css" />
-  <!-- 예시 화면(목업) 스타일 -->
-  <link rel="stylesheet" href="css/v1/mockups.css" />
-  <!-- 서랍 패널 스타일 -->
-  <link rel="stylesheet" href="css/v1/drawer.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+
+  <!-- 디자인 시스템 (docs/design-system.md) -->
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/motion.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <!-- 화면 배치 -->
+  <link rel="stylesheet" href="css/layout.css" />
+  <!-- 왼쪽 레일: 사진, 팔레트, 색 역할 -->
+  <link rel="stylesheet" href="css/rail.css" />
+  <!-- 서랍과 저장한 브랜드 카드 -->
+  <link rel="stylesheet" href="css/drawer.css" />
+  <!-- 오른쪽 브랜드 설정 패널 -->
+  <link rel="stylesheet" href="css/panel.css" />
+  <!-- 가운데 브랜드 보드 (브랜드 변수 --b-*만 씀) -->
+  <link rel="stylesheet" href="css/board.css" />
+  <!-- 적용 화면: 모바일 웹·슬라이드 (브랜드 변수 --b-*만 씀) -->
+  <link rel="stylesheet" href="css/mockups.css" />
 </head>
 <body>
 
-  <!-- ===== 헤더: 앱 이름 + 우측 버튼들 ===== -->
+  <!-- ===== 헤더 ===== -->
   <header class="app-header">
-    <!-- 타이틀 클릭 → 초기 화면으로 리셋 (홈 버튼 역할) -->
-    <h1 class="app-title" id="app-title" role="button" tabindex="0" title="처음으로">VibePicker</h1>
-    <div class="header-actions">
-      <!-- 저장 버튼: 변경이 있을 때만 활성화됨 -->
-      <button class="btn btn-save" id="btn-save" disabled>저장</button>
-      <!-- 서랍 버튼: 저장된 팔레트 카드 목록 열기 -->
-      <button class="btn btn-drawer" id="btn-drawer">서랍</button>
+    <a class="logo" href="./" id="logo" aria-label="VibePicker 처음 화면">
+      <!-- 다섯 줄 표시는 지금 팔레트 색으로 물든다 -->
+      <span class="logo__mark" aria-hidden="true">
+        <i style="--i: 0"></i><i style="--i: 1"></i><i style="--i: 2"></i><i style="--i: 3"></i><i style="--i: 4"></i>
+      </span>
+      <span class="logo__word">VibePicker</span>
+    </a>
+
+    <div class="app-header__actions">
+      <!-- 작업 화면에서만 보이는 버튼 -->
+      <div class="app-header__work" id="header-work" hidden>
+        <button class="btn btn--secondary" id="btn-save" data-icon="bookmark" disabled>저장</button>
+        <button class="btn btn--primary" id="btn-export" data-icon="export" disabled>내보내기</button>
+        <span class="app-header__divider" aria-hidden="true"></span>
+      </div>
+      <button class="btn btn--ghost" id="btn-drawer" data-icon="drawer" disabled>서랍</button>
+      <button class="btn btn--ghost btn--icon" id="btn-ui-mode" data-tooltip-placement="bottom" data-tooltip-align="end"></button>
     </div>
   </header>
 
-  <!-- ===== 메인 콘텐츠 ===== -->
-  <main class="app-main">
+  <!-- ===== 첫 화면 ===== -->
+  <main class="home" id="home">
+    <section class="hero">
+      <p class="hero__steps" aria-label="진행 순서">
+        <span>사진</span><span>팔레트</span><span>브랜드</span><span>화면</span><span>프롬프트·CSS</span>
+      </p>
+      <h1 class="hero__title">사진 한 장의 분위기로<br />우리 서비스의 브랜드를</h1>
+      <p class="hero__lead">
+        사진에서 색 다섯 개를 뽑고 서체·아이콘·둥글기까지 맞춰 모바일 웹과 발표 슬라이드에 입혀 봅니다.
+        마음에 들면 AI 프롬프트나 CSS 변수로 가져가세요. 사진은 이 브라우저 밖으로 나가지 않습니다.
+      </p>
+      <div class="hero__actions">
+        <button class="btn btn--primary btn--lg" id="btn-upload" data-icon="upload">사진 올리기</button>
+        <span class="hero__hint">또는 이 창 어디에나 끌어다 놓기</span>
+      </div>
+      <input type="file" id="file-input" accept="image/*" hidden />
+    </section>
 
-    <!-- ── 홈 화면: 사진 업로드 + 저장된 팔레트 목록 ── -->
-    <div id="home-screen">
-      <!-- 사진 업로드 안내 -->
-      <section class="upload-section" id="upload-section">
-        <div class="upload-placeholder" id="upload-placeholder">
-          <p class="upload-hint">사진을 끌어다 놓거나 파일을 선택하세요</p>
-          <button class="btn btn-file" id="btn-file">파일 선택</button>
-          <input type="file" id="file-input" accept="image/*" hidden />
+    <section class="samples" aria-labelledby="samples-title">
+      <h2 class="samples__title" id="samples-title">샘플 사진으로 시작하기</h2>
+      <ul class="samples__list">
+        <li>
+          <button class="sample" data-sample="1">
+            <span class="sample__photo"><img src="samples/card1.jpg" alt="" width="800" height="600" /><span class="sample__strip" aria-hidden="true"></span></span>
+            <span class="sample__label">아이스크림 가게<small>크림·나무·종이컵</small></span>
+          </button>
+        </li>
+        <li>
+          <button class="sample" data-sample="2">
+            <span class="sample__photo"><img src="samples/card2.jpg" alt="" width="800" height="600" /><span class="sample__strip" aria-hidden="true"></span></span>
+            <span class="sample__label">귤밭 위 하늘<small>하늘색·올리브</small></span>
+          </button>
+        </li>
+        <li>
+          <button class="sample" data-sample="3">
+            <span class="sample__photo"><img src="samples/card3.jpg" alt="" width="800" height="600" /><span class="sample__strip" aria-hidden="true"></span></span>
+            <span class="sample__label">붉은 조명의 바<small>빨강·주황·어둠</small></span>
+          </button>
+        </li>
+      </ul>
+    </section>
 
-          <!-- 샘플 사진 3장: 누르면 바로 체험 가능
-               (미리보기는 작은 thumb 파일, 원본은 눌렀을 때만 불러옴) -->
-          <div class="sample-list" id="sample-list">
-            <p class="sample-label">샘플로 바로 체험해보기</p>
-            <div class="sample-thumbs">
-              <button class="sample-thumb" data-index="0" aria-label="샘플 사진 1">
-                <img src="samples/thumb1.jpg" alt="샘플 1" />
-              </button>
-              <button class="sample-thumb" data-index="1" aria-label="샘플 사진 2">
-                <img src="samples/thumb2.jpg" alt="샘플 2" />
-              </button>
-              <button class="sample-thumb" data-index="2" aria-label="샘플 사진 3">
-                <img src="samples/thumb3.jpg" alt="샘플 3" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 저장된 팔레트 목록 (서랍에 카드가 있을 때만 표시) -->
-      <section class="home-palettes-section" id="home-palettes-section" hidden>
-        <h2 class="home-palettes-title">저장된 팔레트</h2>
-        <div class="home-palettes-grid" id="home-palettes-grid">
-          <!-- storage.js가 동적으로 채움 -->
-        </div>
-      </section>
-    </div>
-
-    <!-- ── 워크스페이스: 좌(사진+칩+도구) / 우(목업 탭 뷰어) ── -->
-    <div id="workspace" class="workspace" hidden>
-
-      <!-- 좌측 컬럼 -->
-      <div class="workspace-left">
-
-        <!-- 사진 캔버스 영역 -->
-        <div class="image-display" id="image-display" hidden>
-          <!-- canvas-wrapper: overlay가 캔버스 영역만 정확히 덮도록 감쌈 -->
-          <div class="canvas-wrapper">
-            <canvas id="image-canvas" aria-label="업로드된 사진"></canvas>
-            <!-- 스포이드 모드일 때 사진 위에 덮이는 투명 레이어 -->
-            <div class="eyedropper-overlay" id="eyedropper-overlay" hidden></div>
-          </div>
-        </div>
-
-        <!-- 컬러칩 5개 (직사각형, 붙어있는 형태) -->
-        <section class="chips-section" id="chips-section" hidden>
-          <div class="chips-row" id="chips-row">
-            <!-- chips.js가 동적으로 채움 -->
-          </div>
-          <!-- 대비 슬라이더를 움직였을 때만 보이는 안내 -->
-          <p class="chips-note" id="chips-note" hidden>대비 슬라이더가 적용된 색이에요. ↺를 누르면 사진에서 뽑은 원래 색으로 돌아갑니다.</p>
-          <div class="repick-row" id="repick-row">
-            <button class="btn btn-repick" id="btn-repick">다시 뽑기</button>
-            <!-- 보관 버튼: 현재 팔레트를 히스토리에 추가 (최대 5개) -->
-            <button class="btn btn-keep" id="btn-keep" title="이 팔레트를 아래에 보관">보관</button>
-            <span class="keep-warning" id="keep-warning" hidden>최대 5개까지 보관할 수 있어요</span>
-          </div>
-
-          <!-- 팔레트 히스토리: 보관 버튼을 눌렀을 때 쌓이는 시안 목록 -->
-          <div class="palette-history" id="palette-history"></div>
-        </section>
-
-
-      </div><!-- /workspace-left -->
-
-      <!-- 우측 컬럼: 목업 탭 뷰어 -->
-      <div class="workspace-right">
-
-        <div class="mockup-viewer" id="mockup-viewer">
-          <!-- 탭 네비게이션 -->
-          <div class="mockup-tabs-nav">
-            <button class="mockup-tab-btn active" data-tab="slide">슬라이드</button>
-            <button class="mockup-tab-btn" data-tab="web">웹</button>
-            <button class="mockup-tab-btn" data-tab="app">앱</button>
-            <!-- 프롬프트 아이콘 버튼: 현재 탭에 맞는 프롬프트 표시 -->
-            <button class="btn-prompt-icon" id="btn-prompt-icon" title="AI 프롬프트 보기" hidden>
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="2" width="6" height="4" rx="1"/>
-                <path d="M6 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"/>
-                <path d="M8 12h8M8 16h5"/>
-              </svg>
-            </button>
-          </div>
-
-          <!-- 슬라이드 탭 -->
-          <div class="mockup-tab-pane" id="mockup-pane-slide">
-            <!-- 슬라이드 캐러셀: 화살표가 슬라이드 좌우 중앙에 오버레이 -->
-            <div class="slide-carousel">
-              <button class="slide-nav-btn slide-prev" id="slide-prev" aria-label="이전 슬라이드" hidden></button>
-              <button class="slide-nav-btn slide-next" id="slide-next" aria-label="다음 슬라이드"></button>
-
-              <div class="mockup-card mockup-slide-cover" id="mockup-slide-cover"></div>
-              <div class="mockup-card mockup-slide-body" id="mockup-slide-body" hidden></div>
-              <div class="mockup-card mockup-slide-chart" id="mockup-slide-chart" hidden></div>
-            </div>
-
-            <!-- 도트 인디케이터 -->
-            <div class="slide-dots" id="slide-dots">
-              <span class="slide-dot active"></span>
-              <span class="slide-dot"></span>
-              <span class="slide-dot"></span>
-            </div>
-          </div>
-
-          <!-- 웹사이트 탭: 슬라이드처럼 화살표로 페이지(홈 · 제품 · 요금) 전환 -->
-          <div class="mockup-tab-pane" id="mockup-pane-web" hidden>
-            <div class="slide-carousel">
-              <button class="slide-nav-btn slide-prev" id="web-prev" aria-label="이전 페이지" hidden></button>
-              <button class="slide-nav-btn slide-next" id="web-next" aria-label="다음 페이지"></button>
-
-              <div class="mockup-card mockup-web" id="mockup-web" data-page="0"></div>
-            </div>
-
-            <!-- 도트 인디케이터 -->
-            <div class="slide-dots" id="web-dots">
-              <span class="slide-dot active"></span>
-              <span class="slide-dot"></span>
-              <span class="slide-dot"></span>
-            </div>
-          </div>
-
-          <!-- 앱 탭: 화살표로 화면(홈 · 분석 · 카드) 전환 -->
-          <div class="mockup-tab-pane" id="mockup-pane-app" hidden>
-            <div class="slide-carousel">
-              <button class="slide-nav-btn slide-prev" id="app-prev" aria-label="이전 화면" hidden></button>
-              <button class="slide-nav-btn slide-next" id="app-next" aria-label="다음 화면"></button>
-
-              <div class="mockup-card mockup-app" id="mockup-app" data-page="0"></div>
-            </div>
-
-            <!-- 도트 인디케이터 -->
-            <div class="slide-dots" id="app-dots">
-              <span class="slide-dot active"></span>
-              <span class="slide-dot"></span>
-              <span class="slide-dot"></span>
-            </div>
-          </div>
-
-          <!-- 뷰어 하단 고정 컨트롤: 역할 배지 + 대비 + 라이트/다크 -->
-          <div class="mockup-viewer-footer" id="mockup-viewer-footer" hidden>
-            <!-- 가독성 경고 오버레이: 푸터 바로 위 좌측에 뜨며 레이아웃에 영향 없음 -->
-            <div class="readability-warning" id="readability-warning" hidden>
-              <span class="warning-icon">⚠</span>
-              <span class="warning-text" id="warning-text">가독성 주의</span>
-            </div>
-
-            <!-- 역할 행: 셔플 아이콘 + 역할 배지 5개 -->
-            <div class="roles-row">
-              <button class="btn-shuffle-icon" id="btn-shuffle" title="역할 무작위 재배정">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="16 3 21 3 21 8"/>
-                  <line x1="4" y1="20" x2="21" y2="3"/>
-                  <polyline points="21 16 21 21 16 21"/>
-                  <line x1="15" y1="15" x2="21" y2="21"/>
-                </svg>
-              </button>
-              <div class="roles-display" id="roles-display"></div>
-            </div>
-
-            <div class="viewer-controls">
-              <!-- 대비 슬라이더 + 초기화 -->
-              <div class="slider-wrap">
-                <label class="slider-label" for="contrast-slider">
-                  대비
-                  <input type="range" id="contrast-slider" min="-30" max="30" value="0" />
-                </label>
-                <button class="btn btn-contrast-reset" id="btn-contrast-reset" title="대비 초기화">↺</button>
-              </div>
-
-              <!-- 라이트·다크 전환 -->
-              <div class="mode-toggle" role="group" aria-label="라이트/다크 모드">
-                <button class="btn btn-mode active" data-mode="light" id="btn-light">라이트</button>
-                <button class="btn btn-mode" data-mode="dark" id="btn-dark">다크</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div><!-- /workspace-right -->
-
-    </div><!-- /workspace -->
-
+    <!-- 저장한 브랜드 (drawer.js가 채운다. 없으면 숨김) -->
+    <section class="saved" id="home-saved" aria-labelledby="saved-title" hidden>
+      <h2 class="samples__title" id="saved-title">저장한 브랜드</h2>
+      <ul class="saved__list"></ul>
+    </section>
   </main>
 
-  <!-- ===== 프롬프트 미리보기 모달 ===== -->
-  <div class="prompt-modal-backdrop" id="prompt-modal-backdrop" hidden></div>
-  <div class="prompt-modal" id="prompt-modal" role="dialog" aria-modal="true" aria-label="AI 프롬프트 미리보기" hidden>
-    <div class="prompt-modal-header">
-      <h2 class="prompt-modal-title" id="prompt-modal-title">AI 프롬프트</h2>
-      <button class="btn prompt-modal-close" id="prompt-modal-close" aria-label="닫기">✕</button>
-    </div>
-    <pre class="prompt-modal-body" id="prompt-modal-body"></pre>
-    <div class="prompt-modal-footer">
-      <button class="btn btn-copy-prompt-confirm" id="btn-copy-prompt-confirm">복사하기</button>
-      <span class="copied-badge" id="prompt-copied" hidden>복사됨</span>
-    </div>
+  <!-- ===== 작업 화면 ===== -->
+  <div class="workspace" id="workspace" hidden>
+
+    <!-- 왼쪽 레일: 사진 · 팔레트 · 색 역할 -->
+    <aside class="rail" aria-label="사진과 팔레트">
+
+      <section class="rail__section">
+        <div class="photo" id="photo">
+          <canvas class="photo__canvas" id="photo-canvas" aria-label="올린 사진"></canvas>
+          <p class="photo__empty" id="photo-empty" hidden>
+            서랍에서 불러온 브랜드에는 사진이 없어요.<br />다시 뽑기와 스포이드는 쓸 수 없어요.
+          </p>
+          <!-- 스포이드 중일 때 안내와 커서를 따라다니는 색 미리보기 -->
+          <p class="photo__hint" id="eyedropper-hint" hidden></p>
+          <span class="photo__loupe" id="eyedropper-loupe" aria-hidden="true" hidden></span>
+        </div>
+      </section>
+
+      <section class="rail__section" aria-labelledby="palette-title">
+        <header class="rail__head">
+          <h2 class="rail__title" id="palette-title">팔레트</h2>
+          <div class="rail__tools">
+            <div class="segmented segmented--xs" id="format-seg" aria-label="색 표기">
+              <button role="radio" data-value="hex" aria-checked="true">HEX</button>
+              <button role="radio" data-value="rgb">RGB</button>
+            </div>
+            <button class="btn btn--ghost btn--icon btn--sm" id="btn-keep" data-icon-only="bookmark"
+                    data-tooltip="시안으로 보관" aria-label="시안으로 보관"></button>
+            <button class="btn btn--secondary btn--sm" id="btn-repick" data-icon="refresh">다시 뽑기</button>
+          </div>
+        </header>
+        <div class="segmented segmented--block style-seg" id="style-seg" aria-label="팔레트 스타일">
+          <button role="radio" data-value="natural" aria-checked="true" aria-label="자연스럽게" data-tooltip="사진 색을 살짝 맑게">자연</button>
+          <button role="radio" data-value="vivid" aria-label="선명하게" data-tooltip="채도를 높인 색 위주로">선명</button>
+          <button role="radio" data-value="muted" aria-label="차분하게" data-tooltip="채도를 낮춰 차분하게">차분</button>
+          <button role="radio" data-value="raw" aria-label="원본 그대로" data-tooltip="다듬지 않은 사진 색">원본</button>
+        </div>
+        <ol class="palette" id="palette" aria-label="대표색 다섯 개"></ol>
+        <p class="rail__note" id="palette-note" hidden>대비를 조절한 색이에요. 역할·내보내기에도 이 값이 쓰여요.</p>
+
+        <div class="kept" id="kept" hidden>
+          <h3 class="kept__title">시안 <span class="num" id="kept-count"></span></h3>
+          <ul class="kept__list" id="kept-list"></ul>
+        </div>
+      </section>
+
+      <section class="rail__section" aria-labelledby="roles-title">
+        <header class="rail__head">
+          <h2 class="rail__title" id="roles-title">색 역할</h2>
+          <div class="rail__tools">
+            <button class="btn btn--ghost btn--sm" id="btn-shuffle" data-icon="shuffle">역할 섞기</button>
+          </div>
+        </header>
+        <ul class="roles" id="roles"></ul>
+        <p class="roles__warning" id="roles-warning" hidden></p>
+
+        <div class="contrast">
+          <label class="slider slider--bipolar" for="contrast-slider">
+            <span class="slider__label">대비</span>
+            <output class="slider__value" id="contrast-value" for="contrast-slider">0</output>
+            <input type="range" id="contrast-slider" min="-30" max="30" step="1" value="0" />
+          </label>
+          <button class="btn btn--ghost btn--icon btn--sm" id="btn-contrast-reset" data-icon-only="refresh"
+                  data-tooltip="대비 되돌리기" aria-label="대비 되돌리기" disabled></button>
+        </div>
+      </section>
+    </aside>
+
+    <!-- 가운데 캔버스: 브랜드 보드 · 모바일 웹 · 슬라이드 -->
+    <section class="canvas" aria-label="미리보기">
+      <div class="canvas__toolbar">
+        <div class="segmented" id="canvas-seg" aria-label="미리보기 화면">
+          <button role="radio" data-value="board" aria-checked="true"><span data-i="board"></span>브랜드 보드</button>
+          <button role="radio" data-value="mobile"><span data-i="phone"></span>모바일 웹</button>
+          <button role="radio" data-value="slides"><span data-i="slides"></span>슬라이드</button>
+        </div>
+        <div class="segmented" id="preview-mode-seg" aria-label="미리보기 모드">
+          <button role="radio" data-value="light" aria-checked="true" aria-label="라이트"><span data-i="sun"></span></button>
+          <button role="radio" data-value="dark" aria-label="다크"><span data-i="moon"></span></button>
+        </div>
+      </div>
+
+      <div class="canvas__stage" id="canvas-stage">
+        <!-- 브랜드 보드는 board.js가, 모바일 웹·슬라이드는 mockups.js가 채운다 -->
+        <div class="canvas__view" data-view="board" id="board-root"></div>
+        <div class="canvas__view" data-view="mobile" id="mobile-root" hidden></div>
+        <div class="canvas__view" data-view="slides" id="slides-root" hidden></div>
+      </div>
+    </section>
+
+    <!-- 오른쪽 설정 패널: 브랜드 설정 (panel.js가 채운다) -->
+    <aside class="panel" aria-labelledby="panel-title">
+      <header class="panel__head">
+        <h2 class="panel__title" id="panel-title">브랜드 설정</h2>
+      </header>
+      <div class="panel__body" id="panel-body"></div>
+    </aside>
   </div>
 
-  <!-- ===== 서랍 패널: 저장된 팔레트 카드 목록 ===== -->
-  <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
-  <aside class="drawer-panel" id="drawer-panel" aria-label="저장된 팔레트 서랍" hidden>
-    <div class="drawer-header">
-      <h2 class="drawer-title">서랍</h2>
-      <button class="btn btn-drawer-close" id="btn-drawer-close" aria-label="서랍 닫기">✕</button>
-    </div>
-    <div class="drawer-list" id="drawer-list">
-      <p class="drawer-empty">저장된 팔레트가 없어요.</p>
-    </div>
-  </aside>
+  <!-- 창 어디에나 사진을 끌어다 놓을 때 -->
+  <div class="drop-overlay" id="drop-overlay" hidden>
+    <p class="drop-overlay__text"><span data-i="image"></span>놓으면 이 사진으로 시작해요</p>
+  </div>
 
-  <!-- ===== JavaScript 진입점 ===== -->
   <script type="module" src="js/main.js"></script>
-
 </body>
 </html>

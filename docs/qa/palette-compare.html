@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>팔레트 전/후 비교 · VibePicker</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link rel="stylesheet" href="../../css/tokens.css" />
+  <link rel="stylesheet" href="../../css/base.css" />
+  <style>
+    body { padding: var(--space-8); }
+    h1 { font-size: var(--text-xl); letter-spacing: var(--tracking-tight); }
+    .lead { margin-top: var(--space-2); color: var(--text-muted); max-width: 72ch; line-height: var(--leading-normal); }
+    .legend { margin-top: var(--space-3); font-size: var(--text-xs); color: var(--text-muted); }
+    .photo-row { display: grid; grid-template-columns: 160px 1fr 1fr; gap: var(--space-6); margin-top: var(--space-8); padding-top: var(--space-6); border-top: var(--border-width) solid var(--border); }
+    .photo-row img, .photo-row canvas { width: 160px; height: 120px; object-fit: cover; border-radius: var(--radius-md); }
+    .photo-row h2 { font-size: var(--text-sm); margin-top: var(--space-2); }
+    .col h3 { font-size: var(--text-xs); font-weight: var(--weight-medium); color: var(--text-muted); margin-bottom: var(--space-2); }
+    .pal { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: var(--space-3); margin-bottom: var(--space-1-5); }
+    .pal span { font-size: var(--text-2xs); color: var(--text-muted); }
+    .strip { display: flex; height: 28px; border-radius: var(--radius-sm); overflow: hidden; }
+    .strip i { flex: 1; background: var(--c); }
+    .metrics { font-size: var(--text-2xs); color: var(--text-muted); white-space: nowrap; }
+    .metrics b { font-weight: var(--weight-semibold); }
+    .bad { color: var(--danger); }
+    table { margin-top: var(--space-8); border-collapse: collapse; font-size: var(--text-sm); }
+    th, td { padding: var(--space-2) var(--space-4); border-bottom: var(--border-width) solid var(--border); text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>팔레트 전/후 비교 — v1 vs v2</h1>
+  <p class="lead">
+    v1은 <code class="mono">v1-practice</code> 태그의 색 추출을 샘플마다 4번 돌린 결과(<code class="mono">docs/before/palette-v1.json</code>),
+    v2는 지금 코드(<code class="mono">js/extract.js</code>, <code class="mono">js/palette.js</code>)의 결과다.
+    아래 두 장은 단조로운 사진에서 무너지지 않는지 보려고 만든 시험 이미지다.
+  </p>
+  <p class="legend">최소 ΔE: 다섯 색 중 가장 비슷한 두 색의 차이 (0.08 미만이면 거의 같은 색) · 탁함: 채도가 낮은 중간 밝기 색의 수 · 명도 폭: 가장 밝은 색과 어두운 색의 L 차이</p>
+
+  <div id="rows"></div>
+  <table id="summary"></table>
+
+  <script type="module">
+    import { extractCandidates } from '../../js/extract.js';
+    import { composePalette } from '../../js/palette.js';
+    import { hexToOklab, hexToOklch, deltaE } from '../../js/oklab.js';
+
+    const v1 = await (await fetch('../before/palette-v1.json')).json();
+
+    const load = (src) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.src = src; });
+
+    /* 단조로운 시험 이미지: 하늘만, 베이지 벽만 */
+    function makeTest(kind) {
+      const c = document.createElement('canvas');
+      c.width = 400; c.height = 300;
+      const ctx = c.getContext('2d');
+      if (kind === 'sky') {
+        const g = ctx.createLinearGradient(0, 0, 0, 300);
+        g.addColorStop(0, '#5B8FD6'); g.addColorStop(1, '#BFD6F2');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 400, 300);
+      } else {
+        ctx.fillStyle = '#D9CDB8'; ctx.fillRect(0, 0, 400, 300);
+        for (let i = 0; i < 6000; i++) {
+          const v = Math.random() * 30 - 15;
+          ctx.fillStyle = `rgb(${217 + v}, ${205 + v}, ${184 + v})`;
+          ctx.fillRect(Math.random() * 400, Math.random() * 300, 3, 3);
+        }
+      }
+      return c;
+    }
+
+    function metrics(colors) {
+      const labs = colors.map(hexToOklab);
+      let minDE = Infinity;
+      for (let i = 0; i < labs.length; i++) for (let j = i + 1; j < labs.length; j++) minDE = Math.min(minDE, deltaE(labs[i], labs[j]));
+      const lch = colors.map(hexToOklch);
+      const muddy = lch.filter(([L, C]) => C > 0.012 && C < 0.065 && L > 0.3 && L < 0.78).length;
+      const Ls = lch.map((l) => l[0]);
+      const maxC = Math.max(...lch.map((l) => l[1]));
+      return { minDE, muddy, spread: Math.max(...Ls) - Math.min(...Ls), maxC };
+    }
+
+    const strip = (colors, label) => {
+      const m = metrics(colors);
+      return `<div class="pal"><span>${label}</span>
+        <div class="strip">${colors.map((c) => `<i style="--c:${c}" title="${c}"></i>`).join('')}</div>
+        <span class="metrics">ΔE <b class="${m.minDE < 0.08 ? 'bad' : ''}">${m.minDE.toFixed(3)}</b> · 탁함 <b class="${m.muddy >= 2 ? 'bad' : ''}">${m.muddy}</b> · 명도 폭 ${m.spread.toFixed(2)}</span></div>`;
+    };
+
+    const sources = [
+      { key: 'sample1', name: '아이스크림 가게', src: '../../samples/sample1.jpg' },
+      { key: 'sample2', name: '귤밭 위 하늘', src: '../../samples/sample2.jpg' },
+      { key: 'sample3', name: '붉은 조명의 바', src: '../../samples/sample3.jpg' },
+      { key: 'sky', name: '시험: 하늘만', test: 'sky' },
+      { key: 'wall', name: '시험: 베이지 벽만', test: 'wall' },
+    ];
+
+    const summary = { v1: [], v2: [] };
+    let html = '';
+
+    for (const s of sources) {
+      const img = s.test ? makeTest(s.test) : await load(s.src);
+      const thumb = s.test ? `<img src="${img.toDataURL()}" alt="">` : `<img src="${s.src}" alt="">`;
+
+      const cand0 = extractCandidates(img, 0);
+      const v2 = [
+        ['자연 (첫 결과)', composePalette(cand0, { style: 'natural' }).colors],
+        ['자연 (다시 열기)', composePalette(extractCandidates(img, 0), { style: 'natural' }).colors],
+        ['선명', composePalette(cand0, { style: 'vivid' }).colors],
+        ['차분', composePalette(cand0, { style: 'muted' }).colors],
+        ['원본', composePalette(cand0, { style: 'raw' }).colors],
+        ['다시 뽑기 1', composePalette(extractCandidates(img, 1), { attempt: 1 }).colors],
+        ['다시 뽑기 2', composePalette(extractCandidates(img, 2), { attempt: 2 }).colors],
+      ];
+      const v1rows = v1[s.key] ?? [];
+
+      v1rows.forEach((p) => summary.v1.push(metrics(p)));
+      v2.filter(([l]) => l.startsWith('자연') || l.startsWith('다시')).forEach(([, p]) => summary.v2.push(metrics(p)));
+
+      html += `<section class="photo-row">
+        <div>${thumb}<h2>${s.name}</h2></div>
+        <div class="col"><h3>v1 · 같은 사진 4번</h3>${v1rows.length ? v1rows.map((p, i) => strip(p, `${i + 1}회`)).join('') : '<p class="metrics">v1 기록 없음 (v2에서 새로 만든 시험 이미지)</p>'}</div>
+        <div class="col"><h3>v2</h3>${v2.map(([l, p]) => strip(p, l)).join('')}</div>
+      </section>`;
+    }
+    document.getElementById('rows').innerHTML = html;
+
+    /* 평균 비교 (샘플 3장 기준) */
+    const avg = (arr, k) => arr.reduce((a, m) => a + m[k], 0) / arr.length;
+    const v2Samples = summary.v2.slice(0, 12); /* 샘플 3장 × (자연 2 + 다시 뽑기 2) */
+    const rowsT = [
+      ['평균 최소 ΔE (클수록 서로 다름)', avg(summary.v1, 'minDE').toFixed(3), avg(v2Samples, 'minDE').toFixed(3)],
+      ['ΔE 0.08 미만 팔레트 비율', `${Math.round(summary.v1.filter((m) => m.minDE < 0.08).length / summary.v1.length * 100)}%`, `${Math.round(v2Samples.filter((m) => m.minDE < 0.08).length / v2Samples.length * 100)}%`],
+      ['팔레트당 탁한 색 평균', avg(summary.v1, 'muddy').toFixed(2), avg(v2Samples, 'muddy').toFixed(2)],
+      ['평균 명도 폭', avg(summary.v1, 'spread').toFixed(2), avg(v2Samples, 'spread').toFixed(2)],
+      ['가장 센 채도 평균 (OKLCH C)', avg(summary.v1, 'maxC').toFixed(3), avg(v2Samples, 'maxC').toFixed(3)],
+    ];
+    document.getElementById('summary').innerHTML = `<tr><th>샘플 3장 기준</th><th>v1</th><th>v2</th></tr>` +
+      rowsT.map((r) => `<tr><td>${r[0]}</td><td class="num">${r[1]}</td><td class="num">${r[2]}</td></tr>`).join('');
+    window.__summary = rowsT;
+  </script>
+</body>
+</html>

@@ -81,6 +81,11 @@ p {
   text-wrap: pretty;
 }
 
+/* hidden 속성은 display를 지정한 요소에서도 반드시 숨긴다 */
+[hidden] {
+  display: none !important;
+}
+
 /* ---------- 포커스 ----------
    마우스로 누를 때는 숨기고, 키보드로 이동할 때만 링을 보인다 */
 :focus {
