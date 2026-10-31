@@ -25,6 +25,10 @@
   <link rel="stylesheet" href="css/layout.css" />
   <!-- 왼쪽 레일: 사진, 팔레트, 색 역할 -->
   <link rel="stylesheet" href="css/rail.css" />
+  <!-- 오른쪽 브랜드 설정 패널 -->
+  <link rel="stylesheet" href="css/panel.css" />
+  <!-- 가운데 브랜드 보드 (브랜드 변수 --b-*만 씀) -->
+  <link rel="stylesheet" href="css/board.css" />
 </head>
 <body>
 
@@ -176,14 +180,8 @@
       </div>
 
       <div class="canvas__stage" id="canvas-stage">
-        <!-- 11·12단계에서 채운다. 지금은 빈 상태 -->
-        <div class="canvas__view" data-view="board">
-          <div class="empty">
-            <span data-i="board"></span>
-            <p class="empty__title">브랜드 보드를 준비하고 있어요</p>
-            <p class="empty__text">팔레트에서 시작한 색·서체·아이콘이 한 장에 모입니다.</p>
-          </div>
-        </div>
+        <!-- 브랜드 보드는 board.js가, 모바일 웹·슬라이드는 12단계에서 채운다 -->
+        <div class="canvas__view" data-view="board" id="board-root"></div>
         <div class="canvas__view" data-view="mobile" hidden>
           <div class="empty">
             <span data-i="phone"></span>
@@ -201,17 +199,12 @@
       </div>
     </section>
 
-    <!-- 오른쪽 설정 패널: 브랜드 설정 (11단계) -->
+    <!-- 오른쪽 설정 패널: 브랜드 설정 (panel.js가 채운다) -->
     <aside class="panel" aria-labelledby="panel-title">
       <header class="panel__head">
         <h2 class="panel__title" id="panel-title">브랜드 설정</h2>
       </header>
-      <div class="panel__body" id="panel-body">
-        <div class="empty empty--compact">
-          <span data-i="sliders"></span>
-          <p class="empty__text">강조색, 톤, 서체, 아이콘, 둥글기를 여기서 정합니다.</p>
-        </div>
-      </div>
+      <div class="panel__body" id="panel-body"></div>
     </aside>
   </div>
 

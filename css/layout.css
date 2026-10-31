@@ -476,6 +476,14 @@
     border-bottom: var(--border-width) solid var(--border);
   }
 
+  .canvas__stage {
+    margin: 0 var(--space-2) var(--space-2);
+  }
+
+  .canvas__view {
+    padding: var(--space-3);
+  }
+
   .app-header {
     padding: 0 var(--space-2) 0 var(--space-4);
   }

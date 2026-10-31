@@ -40,6 +40,9 @@ const state = {
   /* 미리보기 모드: 'light' | 'dark' (VibePicker UI 모드와는 따로) */
   mode: 'light',
 
+  /* 브랜드 설정 (brand.js defaultBrand) — 워드마크, 강조색, 톤, 서체, 아이콘, 둥글기 */
+  brand: null,
+
   /* 캔버스에 보이는 화면: 'board' | 'mobile' | 'slides' */
   canvasView: 'board',
 

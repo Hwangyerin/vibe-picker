@@ -22,13 +22,15 @@ const WHITE = '#FFFFFF';
 /**
  * 팔레트·역할로 UI 색을 바꾼다
  * @param {{ main: string, point: string, sub: string }} roles - 지금 화면에 쓰이는 라이트 역할 색
+ * @param {string} [primary] - 사용자가 고른 브랜드 강조색 (있으면 이 색을 따른다)
  */
-export function applyPaletteTheme(roles) {
+export function applyPaletteTheme(roles, primary) {
   if (!roles) return resetPaletteTheme();
 
-  /* 1. 강조색 후보: 메인 → 포인트 → 보조 중 채도가 충분한 첫 색 */
-  const source = [roles.main, roles.point, roles.sub]
-    .find((hex) => hexToOklch(hex)[1] >= MIN_ACCENT_CHROMA) ?? roles.main;
+  /* 1. 강조색: 브랜드 Primary. 회색에 가까우면 메인 → 포인트 → 보조 중 채도가 충분한 첫 색 */
+  const source = [primary, roles.main, roles.point, roles.sub]
+    .filter(Boolean)
+    .find((hex) => hexToOklch(hex)[1] >= MIN_ACCENT_CHROMA) ?? primary ?? roles.main;
 
   const accent = readableAccent(source);
   const [, C, h] = hexToOklch(accent);

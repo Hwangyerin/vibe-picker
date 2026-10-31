@@ -22,8 +22,24 @@ import { initSegmented } from './ui/segmented.js';
 import { confirmDialog } from './ui/dialog.js';
 import { toast } from './ui/toast.js';
 import { applyPaletteTheme, resetPaletteTheme, getUiMode, setUiMode } from './ui/theme.js';
+import { defaultBrand, brandTokens, applyBrandTokens, brandPrimary } from './brand.js';
+import { renderBoard } from './board.js';
+import { initPanel, renderPanel } from './panel.js';
+import { paletteMood, rankFonts, loadFont, loadPreviews } from './fonts.js';
+import { loadIconSet, ICON_SETS, ICON_WEIGHTS } from './icons.js';
 
 const MAX_KEPT = 5;
+
+/* 다 받아진 서체 (안 받아진 서체는 받는 동안 이전 서체를 그대로 보여 깜빡임을 막는다) */
+const readyFonts = new Set(['pretendard']);
+const loadingFonts = new Set();
+let shownFonts = { display: 'pretendard', body: 'pretendard' };
+
+/* 아이콘: "세트/굵기" → 받아 둔 SVG */
+const iconMaps = new Map();
+const loadingIcons = new Set();
+
+let previewTimer = 0;
 
 let canvasSeg = null;
 let modeSeg = null;
@@ -41,6 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
   setOnImage(handleImage);
 
   initChips({ onPick: handleEyedropperPick, onUnpick: handleUnpick });
+
+  setState({ brand: defaultBrand() });
+  initPanel(handleBrandChange);
 
   document.getElementById('btn-repick').addEventListener('click', handleRepick);
   document.getElementById('btn-keep').addEventListener('click', handleKeep);
@@ -123,6 +142,8 @@ function handleImage(img) {
       contrastOffset: 0,
       paletteHistory: [],
       loadedCardKey: null,
+      /* 새 사진이면 팔레트 칸이 바뀌므로 강조색 선택만 처음으로 (워드마크·서체 등은 그대로) */
+      brand: { ...state.brand, accentIndex: null, accentLight: 0, accentChroma: 0 },
       isDirty: true,
     });
     updateUI();
@@ -149,9 +170,79 @@ function updateUI() {
   setPhotoTools(Boolean(image));
   styleSeg.setDisabled(!image);
 
-  /* VibePicker 자체가 지금 팔레트로 물든다 */
-  applyPaletteTheme(rolesForMode(displayRoles, 'light'));
+  /* VibePicker 자체가 지금 브랜드 강조색과 팔레트로 물든다 */
+  applyPaletteTheme(rolesForMode(displayRoles, 'light'), brandPrimary(state.brand, displayRoles, displayPalette));
   paintLogo(displayPalette);
+
+  renderBrand(displayRoles, displayPalette);
+}
+
+/* ==========================================================
+   브랜드 — 보드와 설정 패널
+   ========================================================== */
+
+function renderBrand(displayRoles, displayPalette) {
+  const { brand, mode } = state;
+
+  /* 사진 분위기 → 서체 추천 */
+  const mood = paletteMood(displayPalette);
+  const displayRank = rankFonts(mood);
+  const bodyRank = rankFonts(mood, { body: true });
+  const autoFont = displayRank[0].font.id;
+
+  /* 고른 서체가 아직 안 받아졌으면 받는 동안 이전 서체로 */
+  const wantDisplay = brand.fontDisplay ?? autoFont;
+  const wantBody = brand.fontBody;
+  if (readyFonts.has(wantDisplay)) shownFonts.display = wantDisplay; else requestFont(wantDisplay);
+  if (readyFonts.has(wantBody)) shownFonts.body = wantBody; else requestFont(wantBody);
+
+  const tokens = brandTokens(
+    { ...brand, fontDisplay: shownFonts.display, fontBody: shownFonts.body },
+    displayRoles, displayPalette, mode, autoFont,
+  );
+  applyBrandTokens(document.getElementById('canvas-stage'), tokens);
+
+  renderBoard(document.getElementById('board-root'), {
+    tokens, brand, palette: displayPalette, icons: currentIcons(brand),
+  });
+
+  const autoAccent = Math.max(0, displayPalette.indexOf(displayRoles.main));
+  renderPanel(brand, { palette: displayPalette, autoAccent, primary: tokens.primary, displayRank, bodyRank, autoFont });
+
+  /* 서체 목록 미리보기용 글자 (워드마크를 칠 때마다가 아니라 잠깐 멈췄을 때) */
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => loadPreviews(brand.wordmark || 'Planit'), 400);
+}
+
+function requestFont(id) {
+  if (loadingFonts.has(id)) return;
+  loadingFonts.add(id);
+  loadFont(id).then(() => {
+    readyFonts.add(id);
+    loadingFonts.delete(id);
+    if (state.roles) updateUI();
+  });
+}
+
+/** 지금 설정의 아이콘 (아직 안 받아졌으면 받기 시작하고 null) */
+function currentIcons(brand) {
+  const key = `${brand.iconSet}/${ICON_SETS[brand.iconSet].stroke ? 'regular' : ICON_WEIGHTS[brand.iconWeight].phosphor}`;
+  if (iconMaps.has(key)) return iconMaps.get(key);
+  if (!loadingIcons.has(key)) {
+    loadingIcons.add(key);
+    loadIconSet(brand.iconSet, brand.iconWeight).then((map) => {
+      iconMaps.set(key, map);
+      loadingIcons.delete(key);
+      if (state.roles) updateUI();
+    });
+  }
+  return null;
+}
+
+/** 설정 패널에서 무언가 바뀌었을 때 */
+function handleBrandChange(patch) {
+  setState({ brand: { ...state.brand, ...patch }, isDirty: true });
+  if (state.roles) updateUI();
 }
 
 /** 로고의 다섯 줄을 지금 팔레트 색으로 */

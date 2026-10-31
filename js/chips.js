@@ -42,9 +42,9 @@ export function initChips(handlers) {
     }
   });
 
-  /* HEX·RGB 복사는 칩과 색 역할 목록이 함께 쓴다 */
+  /* HEX·RGB 복사는 칩, 색 역할 목록, 브랜드 보드(.b-copy)가 함께 쓴다 */
   document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.chip__copy');
+    const btn = e.target.closest('.chip__copy, .b-copy');
     if (btn) copyValue(btn);
   });
 
