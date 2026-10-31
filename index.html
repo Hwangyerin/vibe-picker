@@ -124,6 +124,12 @@
             <button class="btn btn--secondary btn--sm" id="btn-repick" data-icon="refresh">다시 뽑기</button>
           </div>
         </header>
+        <div class="segmented segmented--block style-seg" id="style-seg" aria-label="팔레트 스타일">
+          <button role="radio" data-value="natural" aria-checked="true" aria-label="자연스럽게" data-tooltip="사진 색을 살짝 맑게">자연</button>
+          <button role="radio" data-value="vivid" aria-label="선명하게" data-tooltip="채도를 높인 색 위주로">선명</button>
+          <button role="radio" data-value="muted" aria-label="차분하게" data-tooltip="채도를 낮춰 차분하게">차분</button>
+          <button role="radio" data-value="raw" aria-label="원본 그대로" data-tooltip="다듬지 않은 사진 색">원본</button>
+        </div>
         <ol class="palette" id="palette" aria-label="대표색 다섯 개"></ol>
         <p class="rail__note" id="palette-note" hidden>대비를 조절한 색이에요. 역할·내보내기에도 이 값이 쓰여요.</p>
 

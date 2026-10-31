@@ -13,8 +13,17 @@ const state = {
   /* 새로고침 뒤 되살리기용 사진 (base64, 긴 변 800px) */
   previewImage: null,
 
-  /* 사진에서 뽑은 후보 색 (HEX 배열) */
-  candidateColors: [],
+  /* 사진에서 뽑은 후보 색 [{ hex, lab, lch, area }] (extract.js) */
+  candidates: [],
+
+  /* 팔레트 스타일: 'natural' | 'vivid' | 'muted' | 'raw' */
+  paletteStyle: 'natural',
+
+  /* 다시 뽑기 횟수 (0이면 사진마다 항상 같은 첫 결과) */
+  attempt: 0,
+
+  /* 최근에 보여 준 조합 서명 (다시 뽑기에서 같은 조합을 피한다) */
+  recentSignatures: [],
 
   /* 지금 팔레트 5색 (HEX 배열, 대비 조절 전 원본) */
   palette: [],

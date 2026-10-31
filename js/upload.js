@@ -4,7 +4,8 @@
    사진은 브라우저 안에서만 다루고 어디로도 보내지 않는다
    ========================================================== */
 
-import { extractColors, pickDistinct } from './extract.js';
+import { extractCandidates } from './extract.js';
+import { composePalette } from './palette.js';
 
 /* 샘플: 작업에 쓰는 원본과 첫 화면 카드 */
 const SAMPLES = {
@@ -162,12 +163,13 @@ export function restoreImage(src) {
 
 function primeSampleStrip(btn) {
   const strip = btn.querySelector('.sample__strip');
-  const img = btn.querySelector('img');
-  const fill = () => {
-    const palette = pickDistinct(extractColors(img), new Set(), 5, false);
-    strip.innerHTML = palette.map((c) => `<i style="--c: ${c}"></i>`).join('');
+  /* 카드에 보이는 작은 사진이 아니라 실제로 쓸 원본으로 뽑아야 누른 뒤의 팔레트와 같다.
+     원본을 미리 받아 두는 효과도 있다 */
+  const img = new Image();
+  img.onload = () => {
+    const { colors } = composePalette(extractCandidates(img));
+    strip.innerHTML = colors.map((c) => `<i style="--c: ${c}"></i>`).join('');
     strip.setAttribute('data-ready', '');
   };
-  if (img.complete) fill();
-  else img.addEventListener('load', fill, { once: true });
+  img.src = SAMPLES[btn.dataset.sample];
 }

@@ -5,7 +5,8 @@
 
 import { state, setState } from './state.js';
 import { initUpload, setOnImage, makePreview } from './upload.js';
-import { extractColors, pickDistinct } from './extract.js';
+import { extractCandidates } from './extract.js';
+import { composePalette } from './palette.js';
 import {
   assignRoles, shuffleRoles, readabilityWarning,
   applyContrastToRoles, applyContrastToPalette, rolesForMode,
@@ -26,6 +27,7 @@ const MAX_KEPT = 5;
 
 let canvasSeg = null;
 let modeSeg = null;
+let styleSeg = null;
 
 /* ==========================================================
    초기화
@@ -62,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   initSegmented(document.getElementById('format-seg'), { onChange: setChipFormat });
+  styleSeg = initSegmented(document.getElementById('style-seg'), { onChange: handleStyle });
 
   canvasSeg = initSegmented(document.getElementById('canvas-seg'), {
     onChange: (v) => {
@@ -105,13 +108,15 @@ function handleImage(img) {
 
   /* 칩 자리의 불러오는 표시가 먼저 그려지도록 한 프레임 쉰 뒤 색을 뽑는다 */
   requestAnimationFrame(() => setTimeout(() => {
-    const candidates = extractColors(img);
-    const palette = pickDistinct(candidates, new Set(), 5);
+    const candidates = extractCandidates(img, 0);
+    const { colors: palette, signature } = composePalette(candidates, { style: state.paletteStyle });
     setState({
       view: 'work',
       image: img,
       previewImage: makePreview(img),
-      candidateColors: candidates,
+      candidates,
+      attempt: 0,
+      recentSignatures: [signature],
       palette,
       myPicks: new Set(),
       roles: assignRoles(palette),
@@ -142,6 +147,7 @@ function updateUI() {
   renderContrast(contrastOffset);
   renderKept(state.paletteHistory, currentKeptIndex());
   setPhotoTools(Boolean(image));
+  styleSeg.setDisabled(!image);
 
   /* VibePicker 자체가 지금 팔레트로 물든다 */
   applyPaletteTheme(rolesForMode(displayRoles, 'light'));
@@ -163,27 +169,52 @@ function clearLogo() {
    레일 버튼
    ========================================================== */
 
-/** 다시 뽑기: 사진에서 후보를 새로 뽑아 다른 5색 (my pick은 남긴다) */
+/** my pick 칩 위치 → 그 색 */
+function fixedColors() {
+  return new Map([...state.myPicks].map((i) => [i, state.palette[i]]));
+}
+
+/**
+ * 다시 뽑기: 다른 시작점으로 후보를 새로 뽑고, 조화 점수 상위 조합 중 최근에 보지 않은 것
+ * my pick은 같은 칸에 그대로 남는다
+ */
 function handleRepick() {
-  const { image, myPicks, palette } = state;
+  const { image, paletteStyle, recentSignatures } = state;
   if (!image) return;
 
-  const candidates = extractColors(image);
-  const fixed = new Set([...myPicks].map((i) => palette[i]));
-  const next = pickDistinct(candidates, fixed, 5);
-
-  /* my pick 위치를 새 팔레트에 맞춰 다시 센다 */
-  const nextPicks = new Set();
-  fixed.forEach((hex) => {
-    const i = next.indexOf(hex);
-    if (i !== -1) nextPicks.add(i);
+  const attempt = state.attempt + 1;
+  const candidates = extractCandidates(image, attempt);
+  const { colors, signature } = composePalette(candidates, {
+    style: paletteStyle,
+    attempt,
+    fixed: fixedColors(),
+    avoid: recentSignatures,
   });
 
   setState({
-    candidateColors: candidates,
-    palette: next,
-    myPicks: nextPicks,
-    roles: assignRoles(next),
+    candidates,
+    attempt,
+    recentSignatures: [...recentSignatures, signature].slice(-6),
+    palette: colors,
+    roles: assignRoles(colors),
+    isDirty: true,
+  });
+  updateUI();
+}
+
+/** 팔레트 스타일 바꾸기: 같은 후보에서 그 스타일로 다시 고르고 다듬는다 */
+function handleStyle(style) {
+  setState({ paletteStyle: style });
+  if (!state.image || !state.candidates.length) return;
+  const { colors, signature } = composePalette(state.candidates, {
+    style,
+    attempt: state.attempt,
+    fixed: fixedColors(),
+  });
+  setState({
+    palette: colors,
+    roles: assignRoles(colors),
+    recentSignatures: [...state.recentSignatures, signature].slice(-6),
     isDirty: true,
   });
   updateUI();
@@ -222,8 +253,8 @@ function handleUnpick(index) {
 /* ---------- 시안 ---------- */
 
 function snapshot() {
-  const { palette, myPicks, roles, contrastOffset } = state;
-  return { palette: [...palette], myPicks: [...myPicks], roles, contrastOffset };
+  const { palette, myPicks, roles, contrastOffset, paletteStyle } = state;
+  return { palette: [...palette], myPicks: [...myPicks], roles, contrastOffset, paletteStyle };
 }
 
 function currentKeptIndex() {
@@ -250,8 +281,10 @@ function handleKeptRestore(i) {
     myPicks: new Set(e.myPicks),
     roles: e.roles,
     contrastOffset: e.contrastOffset,
+    paletteStyle: e.paletteStyle ?? 'natural',
     isDirty: true,
   });
+  styleSeg.set(state.paletteStyle);
   updateUI();
 }
 
@@ -296,7 +329,9 @@ function resetToHome() {
     view: 'home',
     image: null,
     previewImage: null,
-    candidateColors: [],
+    candidates: [],
+    attempt: 0,
+    recentSignatures: [],
     palette: [],
     myPicks: new Set(),
     roles: null,
