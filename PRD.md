@@ -89,7 +89,7 @@
 8. 사용자는 **설정 패널**에서 브랜드 시스템을 조절한다. 바꾸는 즉시 보드와 적용 화면에 반영된다.
    | 설정 | 선택지 | 기본값 |
    | --- | --- | --- |
-   | 화면 | 라이트 / 다크 | 라이트 |
+   | 화면 (캔버스 도구 막대) | 라이트 / 다크 | 라이트 |
    | 심볼 | 이미지 업로드 / 모노그램 | 모노그램 |
    | 워드마크 | 텍스트 입력 (최대 16자) | 사진 분위기에 맞춘 예시 이름 |
    | 강조색 | 팔레트 5색 중 선택 + 밝기·채도 미세 조정 | 자동 배정된 메인 색 |
@@ -191,6 +191,7 @@ VibePicker 자체의 디자인 시스템은 `docs/design-system.md`에 정의하
   - `css/base.css`: 초기화, 기본 요소
   - `css/components.css`: 버튼, 입력, 세그먼트, 슬라이더, 칩, 창, 시트, 토스트
   - `css/layout.css`: 첫 화면, 작업 화면 3단 배치, 반응형
+  - `css/rail.css`: 왼쪽 레일 (사진, 팔레트 칩, 시안, 색 역할, 대비)
   - `css/board.css`: 브랜드 보드
   - `css/mockups.css`: 모바일 웹·슬라이드 목업 (브랜드 변수 `--b-*`만 사용)
   - `css/motion.css`: 공통 전환·등장 모션, reduced-motion 처리
@@ -209,6 +210,7 @@ VibePicker 자체의 디자인 시스템은 `docs/design-system.md`에 정의하
   - `js/mockups.js`: 모바일 웹·슬라이드 그리기, 넘기기
   - `js/export.js`: 프롬프트·CSS·Tailwind·JSON 만들기
   - `js/storage.js`: 저장, 서랍, localStorage, 새로고침 복원
+  - `js/chips.js`: 사진 영역, 팔레트 칩, 복사, 스포이드 / `js/rail.js`: 색 역할·대비·시안 그리기 / `js/view.js`: 화면 전환·뒤로 가기
   - `js/ui/`: `dialog.js`(확인 창), `sheet.js`(바텀 시트), `toast.js`(알림), `theme.js`(사진에 물드는 UI)
   - `docs/design-system.md`: VibePicker 디자인 시스템 문서
   - `docs/qa/`: 점검 기록과 스크린샷
