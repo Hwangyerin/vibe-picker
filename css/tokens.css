@@ -47,17 +47,18 @@
   --text-subtle:    var(--neutral-500);  /* 자리 표시 글자, 꺼진 라벨 — 정보 전달에 쓰지 않음 */
   --text-inverse:   var(--neutral-50);
 
-  --accent-hover:  color-mix(in oklch, var(--accent), black 12%);
-  --accent-active: color-mix(in oklch, var(--accent), black 20%);
-  --accent-soft:   color-mix(in oklch, var(--accent) 10%, var(--surface));
-  --accent-text:   color-mix(in oklch, var(--accent), var(--text) 25%); /* 옅은 바탕 위 강조 글자 */
-  --focus-ring:    color-mix(in oklch, var(--accent) 50%, transparent);
+  --accent-hover:  color-mix(in oklab, var(--accent), black 12%);
+  --accent-active: color-mix(in oklab, var(--accent), black 20%);
+  --accent-soft:   color-mix(in oklab, var(--accent) 10%, var(--surface));
+  --accent-text:   color-mix(in oklab, var(--accent), var(--text) 25%); /* 옅은 바탕 위 강조 글자 */
+  --focus-ring:    color-mix(in oklab, var(--accent) 50%, transparent);
 
   --success: oklch(52% 0.12 155);
   --warning: oklch(55% 0.14 60);
   --danger:  oklch(54% 0.19 27);
-  --danger-hover: color-mix(in oklch, var(--danger), black 12%);
-  --warning-soft: color-mix(in oklch, var(--warning) 12%, var(--surface));
+  --on-danger: oklch(99% 0 0);          /* 위험 버튼 위 글자 */
+  --danger-hover: color-mix(in oklab, var(--danger), black 12%);
+  --warning-soft: color-mix(in oklab, var(--warning) 12%, var(--surface));
 
   /* ---------- 서체 ---------- */
   --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
@@ -103,6 +104,7 @@
   --space-20: 80px;
 
   /* ---------- 크기 ---------- */
+  --control-xs: 20px;  /* 태그, 단축키 표시 */
   --control-sm: 30px;  /* 작은 버튼·세그먼트 */
   --control-md: 36px;  /* 기본 버튼·입력창 */
   --control-lg: 44px;  /* 첫 화면 주요 버튼, 휴대폰 터치 */
@@ -126,11 +128,11 @@
 
   /* 그림자는 두 단계만. 나머지 구분은 경계선으로 */
   --shadow-color: oklch(25% calc(var(--tint-c) * 2) var(--tint-h));
-  --shadow-float:   0 1px 2px  color-mix(in oklch, var(--shadow-color) 8%, transparent),
-                    0 4px 14px color-mix(in oklch, var(--shadow-color) 7%, transparent);
-  --shadow-overlay: 0 2px 6px  color-mix(in oklch, var(--shadow-color) 10%, transparent),
-                    0 20px 48px color-mix(in oklch, var(--shadow-color) 16%, transparent);
-  --backdrop: color-mix(in oklch, var(--neutral-950) 36%, transparent);
+  --shadow-float:   0 1px 2px  color-mix(in oklab, var(--shadow-color) 8%, transparent),
+                    0 4px 14px color-mix(in oklab, var(--shadow-color) 7%, transparent);
+  --shadow-overlay: 0 2px 6px  color-mix(in oklab, var(--shadow-color) 10%, transparent),
+                    0 20px 48px color-mix(in oklab, var(--shadow-color) 16%, transparent);
+  --backdrop: color-mix(in oklab, var(--neutral-950) 36%, transparent);
 
   /* ---------- 쌓임 순서 ---------- */
   --z-sticky:   10;
@@ -150,6 +152,7 @@
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);    /* 자리를 바꾸는 것 */
   --ease-sheet:  cubic-bezier(0.32, 0.72, 0, 1);    /* 창·바텀 시트 */
 
+  --dur-loop: 1400ms;    /* 반복 모션 한 바퀴 (스켈레톤 빛) */
   --stagger: 30ms;       /* 차례로 바뀌는 항목 사이 간격 (팔레트 칩) */
   --lift: -2px;          /* 호버 시 떠오르는 높이 */
   --press-scale: 0.97;   /* 누를 때 줄어드는 비율 */
@@ -173,12 +176,12 @@
     --text-muted:     oklch(73%   calc(var(--tint-c) * 0.8) var(--tint-h));
     --text-subtle:    oklch(58%   calc(var(--tint-c) * 0.8) var(--tint-h));
     --text-inverse:   oklch(18%   var(--tint-c) var(--tint-h));
-    --accent-hover:   color-mix(in oklch, var(--accent), white 10%);
-    --accent-active:  color-mix(in oklch, var(--accent), white 16%);
-    --accent-soft:    color-mix(in oklch, var(--accent) 16%, var(--surface));
-    --accent-text:    color-mix(in oklch, var(--accent), white 35%);
+    --accent-hover:   color-mix(in oklab, var(--accent), white 10%);
+    --accent-active:  color-mix(in oklab, var(--accent), white 16%);
+    --accent-soft:    color-mix(in oklab, var(--accent) 16%, var(--surface));
+    --accent-text:    color-mix(in oklab, var(--accent), white 35%);
     --shadow-color:   oklch(5% 0 0);
-    --backdrop:       color-mix(in oklch, oklch(5% 0 0) 55%, transparent);
+    --backdrop:       color-mix(in oklab, oklch(5% 0 0) 55%, transparent);
     color-scheme: dark;
   }
 }
@@ -196,11 +199,11 @@
   --text-muted:     oklch(73%   calc(var(--tint-c) * 0.8) var(--tint-h));
   --text-subtle:    oklch(58%   calc(var(--tint-c) * 0.8) var(--tint-h));
   --text-inverse:   oklch(18%   var(--tint-c) var(--tint-h));
-  --accent-hover:   color-mix(in oklch, var(--accent), white 10%);
-  --accent-active:  color-mix(in oklch, var(--accent), white 16%);
-  --accent-soft:    color-mix(in oklch, var(--accent) 16%, var(--surface));
-  --accent-text:    color-mix(in oklch, var(--accent), white 35%);
+  --accent-hover:   color-mix(in oklab, var(--accent), white 10%);
+  --accent-active:  color-mix(in oklab, var(--accent), white 16%);
+  --accent-soft:    color-mix(in oklab, var(--accent) 16%, var(--surface));
+  --accent-text:    color-mix(in oklab, var(--accent), white 35%);
   --shadow-color:   oklch(5% 0 0);
-  --backdrop:       color-mix(in oklch, oklch(5% 0 0) 55%, transparent);
+  --backdrop:       color-mix(in oklab, oklch(5% 0 0) 55%, transparent);
   color-scheme: dark;
 }

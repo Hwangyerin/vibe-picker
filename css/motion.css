@@ -95,7 +95,7 @@
       var(--surface-hover) 50%,
       var(--surface-sunken) 100%);
   background-size: 200% 100%;
-  animation: vp-shimmer 1.4s linear infinite;
+  animation: vp-shimmer var(--dur-loop) linear infinite;
   border-radius: var(--radius-sm);
 }
 

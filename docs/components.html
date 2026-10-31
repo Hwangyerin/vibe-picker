@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>컴포넌트 견본 · VibePicker</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/motion.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+
+  <!-- 이 견본 페이지에서만 쓰는 배치. 값은 모두 토큰 -->
+  <style>
+    .sb-header {
+      position: sticky;
+      top: 0;
+      z-index: var(--z-sticky);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-4);
+      min-height: var(--header-h);
+      padding: var(--space-2) var(--space-6);
+      border-bottom: var(--border-width) solid var(--border);
+      background: color-mix(in oklab, var(--bg) 92%, transparent);
+    }
+    .sb-header h1 { font-size: var(--text-md); margin-right: auto; }
+    .sb-header h1 span { color: var(--text-muted); font-weight: var(--weight-regular); }
+
+    .sb-tints { display: flex; gap: var(--space-1-5); }
+    .sb-tint {
+      width: 24px; height: 24px;
+      border-radius: var(--radius-full);
+      background: var(--swatch);
+      box-shadow: inset 0 0 0 var(--border-width) color-mix(in oklab, var(--neutral-950) 12%, transparent);
+      transition: transform var(--dur-fast) var(--ease-out);
+    }
+    @media (hover: hover) { .sb-tint:hover { transform: scale(1.12); } }
+    .sb-tint[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--swatch); }
+
+    .sb-main {
+      max-width: var(--content-max);
+      margin: 0 auto;
+      padding: var(--space-12) var(--space-6) var(--space-20);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--space-16);
+    }
+
+    .sb-section > h2 {
+      font-size: var(--text-lg);
+      letter-spacing: var(--tracking-normal);
+    }
+    .sb-section > p {
+      margin-top: var(--space-1-5);
+      color: var(--text-muted);
+      max-width: 60ch;
+      line-height: var(--leading-normal);
+    }
+    .sb-panel {
+      margin-top: var(--space-5);
+      padding: var(--space-6);
+      border: var(--border-width) solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+    }
+    .sb-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+    .sb-row + .sb-row { margin-top: var(--space-4); }
+    .sb-label { width: 88px; flex-shrink: 0; font-size: var(--text-xs); color: var(--text-muted); }
+    .sb-grid { display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+
+    /* 색 견본 */
+    .sb-swatches { display: grid; grid-template-columns: repeat(13, 1fr); border-radius: var(--radius-md); overflow: hidden; }
+    .sb-swatch { aspect-ratio: 1 / 1.3; background: var(--c); display: flex; align-items: flex-end; padding: var(--space-1-5); font-size: var(--text-2xs); }
+    .sb-semantic { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-3); margin-top: var(--space-5); }
+    .sb-semantic div { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); color: var(--text-muted); }
+    .sb-semantic i { width: 28px; height: 28px; border-radius: var(--radius-sm); background: var(--c); box-shadow: inset 0 0 0 var(--border-width) var(--border); }
+
+    /* 서체 */
+    .sb-type { display: grid; grid-template-columns: 96px 1fr; align-items: baseline; gap: var(--space-3) var(--space-6); }
+    .sb-type dt { font-size: var(--text-xs); color: var(--text-muted); }
+
+    /* 간격·모양 */
+    .sb-space { display: flex; align-items: flex-end; gap: var(--space-3); }
+    .sb-space div { width: var(--s); height: var(--s); background: var(--accent-soft); border: var(--border-width) solid color-mix(in oklab, var(--accent) 30%, transparent); border-radius: 2px; }
+    .sb-shape { width: 120px; height: 80px; background: var(--surface); border: var(--border-width) solid var(--border); display: grid; place-items: center; font-size: var(--text-xs); color: var(--text-muted); }
+
+    /* 모션 */
+    .sb-motion { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-4); }
+    .sb-motion .card { padding: var(--space-5); display: grid; gap: var(--space-1); }
+    .sb-motion strong { font-size: var(--text-base); font-weight: var(--weight-medium); }
+    .sb-motion span { font-size: var(--text-xs); color: var(--text-muted); }
+    .sb-chips { display: flex; height: 56px; border-radius: var(--radius-md); overflow: hidden; }
+    .sb-chips div {
+      flex: 1;
+      background: var(--c);
+      transition: background-color var(--dur-slow) var(--ease-out);
+      transition-delay: calc(var(--i) * var(--stagger));
+    }
+
+    .sb-note { font-size: var(--text-xs); color: var(--text-muted); margin-top: var(--space-3); }
+
+    @media (max-width: 640px) {
+      .sb-header { padding: var(--space-2) var(--space-4); }
+      .sb-main { padding: var(--space-8) var(--space-4) var(--space-16); gap: var(--space-12); }
+      .sb-panel { padding: var(--space-4); }
+      .sb-swatches { grid-template-columns: repeat(7, 1fr); }
+      .sb-type { grid-template-columns: 1fr; gap: var(--space-1); }
+      .sb-type dd { margin-bottom: var(--space-3); }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="sb-header">
+    <h1>VibePicker <span>컴포넌트 견본</span></h1>
+
+    <!-- 사진에 물드는 UI 흉내: 샘플 사진에서 나올 법한 색조로 바꿔 본다 -->
+    <div class="sb-tints" role="group" aria-label="강조색 바꿔 보기">
+      <button class="sb-tint" data-h="255" data-accent="oklch(50% 0.13 255)" aria-label="기본 파랑" aria-pressed="true"></button>
+      <button class="sb-tint" data-h="112" data-accent="oklch(47% 0.09 115)" aria-label="귤밭 올리브"></button>
+      <button class="sb-tint" data-h="48"  data-accent="oklch(50% 0.07 45)"  aria-label="아이스크림 갈색"></button>
+      <button class="sb-tint" data-h="28"  data-accent="oklch(50% 0.17 28)"  aria-label="붉은 조명"></button>
+    </div>
+
+    <div class="segmented" id="theme-seg" aria-label="화면 모드">
+      <button role="radio" data-value="system" aria-checked="true">시스템</button>
+      <button role="radio" data-value="light">라이트</button>
+      <button role="radio" data-value="dark">다크</button>
+    </div>
+  </header>
+
+  <main class="sb-main">
+
+    <!-- ===== 색 ===== -->
+    <section class="sb-section">
+      <h2>색</h2>
+      <p>중립색 13단계는 밝기가 고정이고, 사진의 색조(--tint-h)를 아주 살짝 머금는다. 위 동그라미를 눌러 바꿔 보면 회색 전체가 따라 물든다.</p>
+      <div class="sb-panel">
+        <div class="sb-swatches" id="neutrals"></div>
+        <div class="sb-semantic" id="semantic"></div>
+      </div>
+    </section>
+
+    <!-- ===== 서체 ===== -->
+    <section class="sb-section">
+      <h2>서체</h2>
+      <p>UI는 Pretendard 하나. 굵기는 400·500·600 세 가지만 쓴다. 숫자와 HEX는 고정폭 숫자로 폭이 흔들리지 않게 한다.</p>
+      <div class="sb-panel">
+        <dl class="sb-type">
+          <dt>3xl · 56 / 600</dt><dd style="font-size: var(--text-3xl); font-weight: 600; letter-spacing: var(--tracking-tight); line-height: var(--leading-tight)">사진 한 장으로 브랜드를</dd>
+          <dt>xl · 28 / 600</dt><dd style="font-size: var(--text-xl); font-weight: 600; letter-spacing: var(--tracking-tight)">브랜드 보드</dd>
+          <dt>lg · 20 / 600</dt><dd style="font-size: var(--text-lg); font-weight: 600">서랍에서 지울까요?</dd>
+          <dt>md · 16 / 400</dt><dd style="font-size: var(--text-md); line-height: var(--leading-normal)">팔레트 스타일을 바꾸면 칩과 브랜드 보드가 함께 바뀝니다.</dd>
+          <dt>base · 14 / 500</dt><dd style="font-weight: 500">프롬프트 복사</dd>
+          <dt>sm · 13 / 400</dt><dd style="font-size: var(--text-sm); color: var(--text-muted)">불러온 카드에는 사진이 없어 스포이드를 쓸 수 없어요</dd>
+          <dt>xs · 12 · 숫자</dt><dd class="num" style="font-size: var(--text-xs); color: var(--text-muted)">rgb(110, 160, 228) · 대비 4.62 : 1</dd>
+          <dt>mono</dt><dd class="mono">--color-primary: #6EA0E4;</dd>
+        </dl>
+      </div>
+    </section>
+
+    <!-- ===== 간격·모양 ===== -->
+    <section class="sb-section">
+      <h2>간격 · 둥글기 · 그림자</h2>
+      <p>간격은 4px 격자. 둥글기는 세 단계, 그림자는 두 단계뿐이고 평소의 구분은 1px 경계선으로 한다.</p>
+      <div class="sb-panel">
+        <div class="sb-space" id="spaces"></div>
+        <div class="sb-row" style="margin-top: var(--space-8)">
+          <div class="sb-shape" style="border-radius: var(--radius-sm)">sm · 6</div>
+          <div class="sb-shape" style="border-radius: var(--radius-md)">md · 10</div>
+          <div class="sb-shape" style="border-radius: var(--radius-lg)">lg · 16</div>
+          <div class="sb-shape" style="border-radius: var(--radius-lg); box-shadow: var(--shadow-float); border-color: transparent">shadow-float</div>
+          <div class="sb-shape" style="border-radius: var(--radius-lg); box-shadow: var(--shadow-overlay); border-color: transparent">shadow-overlay</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 버튼 ===== -->
+    <section class="sb-section">
+      <h2>버튼</h2>
+      <p>주요 버튼은 화면에 하나만. 마우스를 올리면 바탕이 한 단계 진해지고, 누르면 0.97로 살짝 눌린다. Tab으로 이동하면 포커스 링이 보인다.</p>
+      <div class="sb-panel">
+        <div class="sb-row">
+          <span class="sb-label">주요</span>
+          <button class="btn btn--primary btn--lg">사진 올리기</button>
+          <button class="btn btn--primary" id="copy-demo"><span class="copy-icon"></span><span>프롬프트 복사</span></button>
+          <button class="btn btn--primary btn--sm">저장</button>
+          <button class="btn btn--primary" disabled>저장</button>
+        </div>
+        <div class="sb-row">
+          <span class="sb-label">보조</span>
+          <button class="btn btn--secondary btn--lg">샘플로 시작</button>
+          <button class="btn btn--secondary" data-icon="refresh">다시 뽑기</button>
+          <button class="btn btn--secondary btn--sm" data-icon="bookmark">보관</button>
+          <button class="btn btn--secondary" disabled data-icon="pipette">스포이드</button>
+        </div>
+        <div class="sb-row">
+          <span class="sb-label">고스트 · 아이콘</span>
+          <button class="btn btn--ghost" data-icon="drawer">서랍</button>
+          <button class="btn btn--ghost btn--icon" data-icon-only="shuffle" data-tooltip="역할 섞기" aria-label="역할 섞기"></button>
+          <button class="btn btn--ghost btn--icon" data-icon-only="chevron-left" data-tooltip="이전 화면" aria-label="이전 화면"></button>
+          <button class="btn btn--ghost btn--icon" data-icon-only="chevron-right" data-tooltip="다음 화면" aria-label="다음 화면"></button>
+          <button class="btn btn--secondary btn--icon btn--sm" data-icon-only="x" aria-label="닫기"></button>
+        </div>
+        <div class="sb-row">
+          <span class="sb-label">위험</span>
+          <button class="btn btn--danger" data-icon="trash">서랍에서 지우기</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 세그먼트·슬라이더 ===== -->
+    <section class="sb-section">
+      <h2>세그먼트 · 슬라이더</h2>
+      <p>세그먼트는 선택 표시가 미끄러져 이동한다. 포커스가 있을 때 ←→ 키로 바꿀 수 있다. 슬라이더는 채워진 부분만 강조색이다.</p>
+      <div class="sb-panel sb-grid">
+        <div style="display: grid; gap: var(--space-4); align-content: start">
+          <div class="segmented" data-demo-seg aria-label="캔버스">
+            <button role="radio" data-value="board" aria-checked="true"><span data-i="board"></span>브랜드 보드</button>
+            <button role="radio" data-value="mobile"><span data-i="phone"></span>모바일 웹</button>
+            <button role="radio" data-value="slides"><span data-i="slides"></span>슬라이드</button>
+          </div>
+          <div class="segmented segmented--block" data-demo-seg aria-label="팔레트 스타일">
+            <button role="radio" data-value="natural" aria-checked="true">자연스럽게</button>
+            <button role="radio" data-value="vivid">선명하게</button>
+            <button role="radio" data-value="muted">차분하게</button>
+            <button role="radio" data-value="raw">원본</button>
+          </div>
+        </div>
+        <div style="display: grid; gap: var(--space-5)">
+          <label class="slider">
+            <span class="slider__label">톤</span>
+            <output class="slider__value">20%</output>
+            <input type="range" min="0" max="100" value="20" data-suffix="%" />
+          </label>
+          <label class="slider">
+            <span class="slider__label">대비</span>
+            <output class="slider__value">0</output>
+            <input type="range" min="-50" max="50" value="0" />
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 입력·선택 ===== -->
+    <section class="sb-section">
+      <h2>입력창 · 선택 목록</h2>
+      <p>선택 목록은 브라우저 기본 모양 대신 직접 만든다. 항목마다 미리보기와 추천 표시를 넣을 수 있다. ↑↓로 고르고 Enter로 정한다.</p>
+      <div class="sb-panel sb-grid">
+        <label class="field">
+          <span class="field__label">워드마크</span>
+          <input class="field__input" id="wordmark" maxlength="16" value="Planit" placeholder="서비스 이름" />
+          <span class="field__count num" id="wordmark-count">6/16</span>
+        </label>
+        <div class="field">
+          <span class="field__label" id="font-label">디스플레이 서체</span>
+          <div id="font-select"></div>
+        </div>
+        <div class="field">
+          <span class="field__label">아이콘 세트</span>
+          <div id="icon-select"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 태그·카드 ===== -->
+    <section class="sb-section">
+      <h2>태그 · 카드</h2>
+      <p>누를 수 있는 카드는 마우스를 올리면 2px 떠오른다. 누를 수 없는 카드는 움직이지 않는다.</p>
+      <div class="sb-panel">
+        <div class="sb-row">
+          <span class="tag">배경</span>
+          <span class="tag">글자</span>
+          <span class="tag tag--accent" data-tag-icon="sparkle">추천</span>
+          <span class="tag tag--warning" data-tag-icon="alert">가독성 주의 2.8 : 1</span>
+          <span class="tag tag--overlay" data-tag-icon="pipette">my pick</span>
+          <span class="kbd">←</span><span class="kbd">→</span><span class="kbd">Esc</span>
+        </div>
+        <div class="sb-grid" style="margin-top: var(--space-6)">
+          <div class="card card--interactive" tabindex="0" style="padding: var(--space-4); display: grid; gap: var(--space-3)">
+            <div class="sb-chips" style="height: 40px">
+              <div style="--c: #F3EEE6; --i: 0"></div><div style="--c: #2A2420; --i: 1"></div><div style="--c: #9B7B5C; --i: 2"></div><div style="--c: #C9A66B; --i: 3"></div><div style="--c: #6F5A4B; --i: 4"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline">
+              <strong style="font-weight: 600">Cremo</strong>
+              <span class="num" style="font-size: var(--text-xs); color: var(--text-muted)">10. 31</span>
+            </div>
+          </div>
+          <div class="card" style="padding: var(--space-4)">
+            <strong style="font-weight: 600">누를 수 없는 카드</strong>
+            <p style="margin-top: var(--space-1); color: var(--text-muted); font-size: var(--text-sm)">경계선만 있고 움직이지 않는다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 창·알림·시트 ===== -->
+    <section class="sb-section">
+      <h2>확인 창 · 알림 · 바텀 시트</h2>
+      <p>브라우저 기본 확인 창 대신 쓴다. 확인 창은 Esc나 바깥을 눌러도 닫히고, 시트는 손잡이를 끌어 내려 닫는다.</p>
+      <div class="sb-panel">
+        <div class="sb-row">
+          <button class="btn btn--secondary" id="open-dialog">지우기 확인 창</button>
+          <button class="btn btn--secondary" id="open-dialog-2">일반 확인 창</button>
+          <button class="btn btn--secondary" id="open-toast">알림 띄우기</button>
+          <button class="btn btn--secondary" id="open-sheet">바텀 시트 열기</button>
+        </div>
+        <p class="sb-note" id="dialog-result" aria-live="polite"></p>
+      </div>
+
+      <!-- 시트에 들어갈 내용 (평소에는 이 자리에 숨어 있다) -->
+      <div hidden>
+        <div id="sheet-content" style="display: grid; gap: var(--space-5)">
+          <label class="slider">
+            <span class="slider__label">톤</span>
+            <output class="slider__value">20%</output>
+            <input type="range" min="0" max="100" value="20" data-suffix="%" />
+          </label>
+          <div class="segmented segmented--block" data-demo-seg aria-label="카드 둥글기">
+            <button role="radio" data-value="0">없음</button>
+            <button role="radio" data-value="1">작게</button>
+            <button role="radio" data-value="2" aria-checked="true">보통</button>
+            <button role="radio" data-value="3">크게</button>
+          </div>
+          <button class="btn btn--primary btn--lg">적용</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 모션 ===== -->
+    <section class="sb-section">
+      <h2>모션</h2>
+      <p>움직임은 상태가 바뀌었다는 신호로만 쓴다. 운영체제에서 동작 줄이기를 켜면 모두 멈추고 상태만 바로 바뀐다.</p>
+      <div class="sb-panel" style="display: grid; gap: var(--space-6)">
+        <div>
+          <div class="sb-chips" id="stagger-chips"></div>
+          <div class="sb-row" style="margin-top: var(--space-3)">
+            <button class="btn btn--secondary btn--sm" id="reroll" data-icon="refresh">팔레트 교체 (30ms 간격)</button>
+            <span class="sb-note" style="margin: 0">--dur-slow · --ease-out · --stagger</span>
+          </div>
+        </div>
+        <div class="sb-motion">
+          <div class="card"><strong>instant · 80ms</strong><span>누름 반응</span></div>
+          <div class="card"><strong>fast · 140ms</strong><span>호버, 색 바뀜, 툴팁</span></div>
+          <div class="card"><strong>base · 220ms</strong><span>탭·화면 전환, 메뉴</span></div>
+          <div class="card"><strong>slow · 320ms</strong><span>창·시트, 팔레트 교체</span></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script type="module">
+    import { icon } from '../js/ui/icon.js';
+    import { initSegmented } from '../js/ui/segmented.js';
+    import { createSelect } from '../js/ui/select.js';
+    import { confirmDialog } from '../js/ui/dialog.js';
+    import { toast } from '../js/ui/toast.js';
+    import { openSheet } from '../js/ui/sheet.js';
+
+    /* ---------- 아이콘 채우기 ---------- */
+    document.querySelectorAll('[data-icon]').forEach((b) => b.insertAdjacentHTML('afterbegin', icon(b.dataset.icon)));
+    document.querySelectorAll('[data-icon-only]').forEach((b) => { b.innerHTML = icon(b.dataset.iconOnly); });
+    document.querySelectorAll('[data-i]').forEach((s) => { s.outerHTML = icon(s.dataset.i); });
+    document.querySelectorAll('[data-tag-icon]').forEach((t) => t.insertAdjacentHTML('afterbegin', icon(t.dataset.tagIcon)));
+
+    /* ---------- 강조색·모드 ---------- */
+    const root = document.documentElement;
+    document.querySelectorAll('.sb-tint').forEach((b) => {
+      b.style.setProperty('--swatch', b.dataset.accent);
+      b.addEventListener('click', () => {
+        root.style.setProperty('--tint-h', b.dataset.h);
+        root.style.setProperty('--tint-c', b.dataset.h === '255' ? '0.008' : '0.014');
+        root.style.setProperty('--accent', b.dataset.accent);
+        document.querySelectorAll('.sb-tint').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      });
+    });
+
+    initSegmented(document.getElementById('theme-seg'), {
+      onChange: (v) => (v === 'system' ? root.removeAttribute('data-theme') : root.setAttribute('data-theme', v)),
+    });
+    document.querySelectorAll('[data-demo-seg]').forEach((el) => initSegmented(el));
+
+    /* ---------- 색 견본 ---------- */
+    const steps = [0, 50, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 950];
+    document.getElementById('neutrals').innerHTML = steps.map((s) =>
+      `<div class="sb-swatch" style="--c: var(--neutral-${s}); color: ${s >= 500 ? 'var(--neutral-0)' : 'var(--neutral-900)'}">${s}</div>`).join('');
+    const semantic = ['bg', 'surface', 'surface-sunken', 'border', 'border-strong', 'text', 'text-muted', 'text-subtle',
+      'accent', 'accent-soft', 'accent-text', 'success', 'warning', 'danger'];
+    document.getElementById('semantic').innerHTML = semantic.map((n) =>
+      `<div><i style="--c: var(--${n})"></i><span class="mono">--${n}</span></div>`).join('');
+
+    /* ---------- 간격 ---------- */
+    const spaces = [1, 2, 3, 4, 5, 6, 8, 10, 12, 16];
+    document.getElementById('spaces').innerHTML = spaces.map((n) =>
+      `<div title="--space-${n}" style="--s: var(--space-${n})"></div>`).join('');
+
+    /* ---------- 슬라이더 채움 ---------- */
+    function syncSlider(input) {
+      const pct = ((input.value - input.min) / (input.max - input.min)) * 100;
+      input.style.setProperty('--fill', `${pct}%`);
+      input.closest('.slider').querySelector('output').textContent = `${input.value}${input.dataset.suffix ?? ''}`;
+    }
+    document.querySelectorAll('.slider input').forEach((i) => {
+      syncSlider(i);
+      i.addEventListener('input', () => syncSlider(i));
+    });
+
+    /* ---------- 입력창 글자 수 ---------- */
+    const wm = document.getElementById('wordmark');
+    wm.addEventListener('input', () => {
+      document.getElementById('wordmark-count').textContent = `${wm.value.length}/16`;
+    });
+
+    /* ---------- 선택 목록 ---------- */
+    const fonts = [
+      { value: 'pretendard', label: 'Pretendard', group: '추천', rec: true, family: 'Pretendard Variable' },
+      { value: 'gowun-batang', label: '고운 바탕', group: '추천', rec: true, family: 'serif' },
+      { value: 'ibm-plex', label: 'IBM Plex Sans KR', group: '추천', rec: true, family: 'sans-serif' },
+      { value: 'noto-serif', label: 'Noto Serif KR', group: '전체', family: 'serif' },
+      { value: 'black-han', label: '검은고딕', group: '전체', family: 'sans-serif' },
+      { value: 'do-hyeon', label: '도현', group: '전체', disabled: true, family: 'sans-serif' },
+    ];
+    createSelect(document.getElementById('font-select'), {
+      options: fonts,
+      value: 'pretendard',
+      label: '디스플레이 서체',
+      renderOption: (o) => `
+        <span style="display: flex; align-items: center; gap: var(--space-2)">
+          <span style="font-family: ${o.family}; font-size: var(--text-md); font-weight: 600">${wm.value || 'Planit'}</span>
+          <span style="color: var(--text-muted)">${o.label}</span>
+          ${o.rec ? `<span class="tag tag--accent">${icon('sparkle')}추천</span>` : ''}
+        </span>`,
+      onChange: (v, o) => toast(`디스플레이 서체: ${o.label}`),
+    });
+    createSelect(document.getElementById('icon-select'), {
+      options: [
+        { value: 'lucide', label: 'Lucide' },
+        { value: 'tabler', label: 'Tabler' },
+        { value: 'phosphor', label: 'Phosphor' },
+      ],
+      label: '아이콘 세트',
+    });
+
+    /* ---------- 복사 버튼: 아이콘이 체크로 바뀌었다 돌아옴 ---------- */
+    const copyBtn = document.getElementById('copy-demo');
+    copyBtn.querySelector('.copy-icon').outerHTML = icon('copy');
+    copyBtn.addEventListener('click', () => {
+      copyBtn.dataset.state = 'done';
+      copyBtn.querySelector('use').setAttribute('href', copyBtn.querySelector('use').getAttribute('href').replace('#copy', '#check'));
+      copyBtn.lastElementChild.textContent = '복사됨';
+      toast('프롬프트를 복사했어요', { tone: 'success' });
+      setTimeout(() => {
+        delete copyBtn.dataset.state;
+        copyBtn.querySelector('use').setAttribute('href', copyBtn.querySelector('use').getAttribute('href').replace('#check', '#copy'));
+        copyBtn.lastElementChild.textContent = '프롬프트 복사';
+      }, 1600);
+    });
+
+    /* ---------- 창·알림·시트 ---------- */
+    const result = document.getElementById('dialog-result');
+    document.getElementById('open-dialog').addEventListener('click', async () => {
+      const ok = await confirmDialog({
+        title: '이 브랜드를 서랍에서 지울까요?',
+        body: '지운 브랜드는 되돌릴 수 없어요.',
+        confirmText: '서랍에서 지우기',
+        tone: 'danger',
+      });
+      result.textContent = ok ? '결과: 지우기를 골랐어요' : '결과: 취소했어요';
+    });
+    document.getElementById('open-dialog-2').addEventListener('click', async () => {
+      const ok = await confirmDialog({
+        title: '저장하지 않고 처음 화면으로 갈까요?',
+        body: '지금 브랜드는 서랍에 저장되지 않았어요.',
+        confirmText: '처음 화면으로',
+      });
+      result.textContent = ok ? '결과: 처음 화면으로' : '결과: 취소했어요';
+    });
+    let n = 0;
+    document.getElementById('open-toast').addEventListener('click', () => {
+      const msgs = [['HEX를 복사했어요', 'success'], ['시안을 보관했어요', 'default'], ['서랍에 저장했어요', 'success']];
+      const [m, tone] = msgs[n++ % msgs.length];
+      toast(m, { tone, icon: tone === 'default' ? 'bookmark' : undefined });
+    });
+    document.getElementById('open-sheet').addEventListener('click', () => {
+      openSheet({ title: '브랜드 설정', content: document.getElementById('sheet-content') });
+    });
+
+    /* ---------- 팔레트 교체 모션 ---------- */
+    const palettes = [
+      ['#D2D8E5', '#111514', '#6B9EE3', '#93865A', '#445168'],
+      ['#F3EEE6', '#2A2420', '#9B7B5C', '#C9A66B', '#6F5A4B'],
+      ['#F4E6DC', '#200301', '#C0392B', '#E39A3B', '#7A2E14'],
+    ];
+    const chips = document.getElementById('stagger-chips');
+    let p = 0;
+    chips.innerHTML = palettes[0].map((c, i) => `<div style="--c: ${c}; --i: ${i}"></div>`).join('');
+    document.getElementById('reroll').addEventListener('click', () => {
+      p = (p + 1) % palettes.length;
+      [...chips.children].forEach((d, i) => d.style.setProperty('--c', palettes[p][i]));
+    });
+  </script>
+</body>
+</html>

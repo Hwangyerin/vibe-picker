@@ -94,7 +94,7 @@ p {
 
 /* ---------- 선택 영역 ---------- */
 ::selection {
-  background: color-mix(in oklch, var(--accent) 24%, transparent);
+  background: color-mix(in oklab, var(--accent) 24%, transparent);
 }
 
 /* ---------- 스크롤바 (지원하는 브라우저만) ---------- */
